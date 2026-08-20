@@ -1,0 +1,21 @@
+{
+  "name": "ssh-os",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.15.1",
+  "scripts": {
+    "dev": "pnpm --filter @sshos/desktop dev",
+    "dev:web": "pnpm --filter @sshos/web dev",
+    "check": "pnpm -r --parallel check",
+    "lint": "pnpm -r --parallel lint",
+    "lint:fix": "pnpm -r --parallel lint:fix",
+    "format": "pnpm -r format",
+    "test": "pnpm -r --parallel test",
+    "build": "pnpm --filter @sshos/web build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.7",
+    "typescript": "^7.0.2"
+  }
+}

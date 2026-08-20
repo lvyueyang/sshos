@@ -2,7 +2,7 @@
 
 以**纯 SSH 协议、零 agent** 把远程 Linux 的文件、进程、软件、Docker 以桌面隐喻可视化呈现。一个 SSH 连接 = 一个 OS 桌面 Tab，用户像操作本地电脑一样操作远程服务器，AI 作为"第二消费者"接入同一套读写网关，所有危险命令经策略引擎拦截。
 
-> 当前处于**设计定稿、实现未开始**阶段，文档见 `docs/`，命令随脚手架落地后生效。
+> 当前阶段：P0-P3 已落地（脚手架 / SSH 引擎 / 策略分类器 / web 基座），W0 三条流 spike 完成（PTY / metrics 流实测 + Pi SDK 定稿），SSH 集成测试经 Docker 测试机接入，详见 `docs/`。
 
 ## 特性
 
@@ -23,26 +23,28 @@ Electron · TanStack Start + React · TypeScript v7 · Tailwind CSS 4 + shadcn/u
 
 ## 快速开始
 
-> 脚手架尚未落地，以下命令为规划命令，随实现生效后回填。
-
 ```bash
 # 安装依赖
 pnpm install
 
-# 启动开发（Electron + TanStack Start dev server）
+# 启动开发（Electron 壳 + TanStack Start dev server）
 pnpm dev
+
+# 仅启动 web 开发
+pnpm dev:web
 ```
 
 ## 命令
 
 | 命令 | 说明 |
 |------|------|
-| `pnpm dev` | 启动开发（Electron + TanStack Start dev server） |
+| `pnpm dev` | 启动开发（Electron 壳 + TanStack Start dev server） |
+| `pnpm dev:web` | 仅启动 web 的 vite dev server（端口 3000） |
 | `pnpm check` | 全部包 tsc --noEmit + Biome 检查 |
 | `pnpm lint` / `pnpm lint:fix` | 全部包 Biome 检查 / 自动修复 |
 | `pnpm format` | 全部包 Biome 格式化 |
 | `pnpm test` | 全部包单元测试 |
-| `pnpm build` | 生产构建（web + desktop） |
+| `pnpm build` | 生产构建（web 的 Nitro 产物） |
 
 ## 工程结构
 

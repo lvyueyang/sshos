@@ -1,0 +1,29 @@
+{
+  "name": "@sshos/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types.ts",
+    "./ssh-manager": "./src/ssh-manager.ts",
+    "./pty-manager": "./src/pty-manager.ts",
+    "./sftp-manager": "./src/sftp-manager.ts",
+    "./metrics-collector": "./src/metrics-collector.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "check": "tsc --noEmit && biome check",
+    "format": "biome format",
+    "lint": "biome lint",
+    "lint:fix": "biome check --write"
+  },
+  "dependencies": {
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/ssh2": "^1.15.5",
+    "vitest": "^4.1.10"
+  }
+}

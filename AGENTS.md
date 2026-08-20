@@ -4,7 +4,7 @@
 
 SSH 可视化终端管理工具（代号 ssh-os）：以**纯 SSH 协议、零 agent** 把远程 Linux 的文件、进程、软件、Docker 以桌面隐喻可视化呈现，用户像操作本地电脑一样操作远程服务器，AI 作为"第二消费者"接入同一套读写网关。桌面外壳范式：一个 SSH 连接 = 一个 OS 桌面 Tab。
 
-**当前阶段**：设计定稿（见 `docs/`），脚手架与实现未开始。修改实现前先读设计文档；文档与实现冲突时以决策记录（`docs/04-决策记录.md`）为单一事实来源。
+**当前阶段**：P0-P3 已落地（脚手架 / SSH 引擎 / 策略分类器 / web 基座），W0 spike 完成（PTY / metrics 流实测首包 2-3ms，Pi SDK 0.84.2 API 定稿）；Docker 测试机（`linuxserver/openssh-server` 端口 2222）就绪，SSH 集成测试经 `SSH_TEST_HOST/PORT/USER/PASSWORD` 环境变量接入。修改实现前先读设计文档；文档与实现冲突时以决策记录（`docs/04-决策记录.md`）为单一事实来源。
 
 ## 工程结构
 
@@ -17,7 +17,8 @@ ssh-os/
 │   ├── core/                     # @sshos/core —— 框架无关 SSH 核心逻辑（ssh2 连接/PTY/SFTP/指标采集）
 │   ├── policy/                   # @sshos/policy —— 命令分类引擎（rules/classifier，safe/review/block）
 │   ├── web/                      # @sshos/web —— TanStack Start 应用包（SFn / Server Route / apps / app-framework）
-│   │   ├── app.config.ts         # TanStack Start + Vite 配置
+│   │   ├── vite.config.ts        # TanStack Start + Vite 配置（tanstackStart/nitro/tailwindcss/importProtection）
+│   │   ├── server.ts             # Nitro server entry（生产构建入口）
 │   │   └── src/
 │   │       ├── routes/           # 仅 __root / index / api/*（无功能页面路由）
 │   │       ├── apps/             # 桌面应用插件包：terminal / files / monitor / clock / ai
@@ -147,22 +148,21 @@ ssh-os/
 | 层 | 存储 | 用途 |
 | --- | --- | --- |
 | 结构化日志 | SQLite `log` 表 | AI 审计、终端命令、Policy Engine 决策（可查询） |
-| 运行时日志 | Pino 文件（`{userData}/logs/`） | SSH 握手、SFTP 传输、异常堆栈、SFn 调用链 |
+| 运行时日志 | Pino 文件（`{dataDir}/logs/`，开发 `~/.ssh-os-dev` / 生产 `~/.ssh-os`） | SSH 握手、SFTP 传输、异常堆栈、SFn 调用链 |
 
 高频审计写入用 BatchWriter 缓冲（定时/定量批量 INSERT + 容量上限 + 进程退出时强制刷新），避免拖慢 PTY 吞吐。
 
 ## 命令
 
-> 脚手架未落地，以下命令为规划命令，随实现生效后回填说明。
-
 | 命令 | 说明 |
 |------|------|
-| `pnpm dev` | 启动开发（Electron + TanStack Start dev server） |
+| `pnpm dev` | 启动开发（Electron 壳 + spawn web vite dev server） |
+| `pnpm dev:web` | 仅启动 web 的 vite dev server（端口 3000） |
 | `pnpm check` | 全部包 tsc --noEmit + Biome 检查 |
 | `pnpm lint` / `pnpm lint:fix` | 全部包 Biome 检查 / 自动修复 |
 | `pnpm format` | 全部包 Biome 格式化 |
-| `pnpm test` | 全部包单元测试 |
-| `pnpm build` | 生产构建（web + desktop） |
+| `pnpm test` | 全部包单元测试（SSH 集成测试设 `SSH_TEST_HOST` 后启用） |
+| `pnpm build` | 生产构建（web 的 Nitro 产物 `.output/server/index.mjs`） |
 
 ## 开发边界
 

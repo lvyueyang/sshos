@@ -1,0 +1,40 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
+	"vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": false },
+	"files": {
+		"ignoreUnknown": false,
+		"includes": [
+			"**/src/**/*",
+			"**/server.ts",
+			"**/vite.config.ts",
+			"**/electron-builder.yml",
+			"!**/src/routeTree.gen.ts",
+			"!**/src/styles"
+		]
+	},
+	"formatter": { "enabled": true, "indentStyle": "tab" },
+	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"a11y": {
+				"noLabelWithoutControl": "off",
+				"noAutofocus": "off",
+				"useKeyWithClickEvents": "off",
+				"noStaticElementInteractions": "off",
+				"useButtonType": "off"
+			},
+			"security": { "noDangerouslySetInnerHtml": "off" },
+			"suspicious": { "noExplicitAny": "off", "noArrayIndexKey": "off" },
+			"style": { "noNonNullAssertion": "off" }
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts"],
+			"linter": { "rules": { "suspicious": { "noThenProperty": "off" } } }
+		}
+	],
+	"javascript": { "formatter": { "quoteStyle": "double" } }
+}

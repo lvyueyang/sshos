@@ -1,0 +1,23 @@
+{
+  "name": "@sshos/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "tsc && electron .",
+    "build": "tsc",
+    "check": "tsc --noEmit && biome check",
+    "format": "biome format",
+    "lint": "biome lint",
+    "lint:fix": "biome check --write"
+  },
+  "dependencies": {
+    "@sshos/web": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
+    "typescript": "^7.0.2"
+  }
+}

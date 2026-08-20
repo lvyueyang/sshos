@@ -1,0 +1,15 @@
+appId: com.sshos.app
+productName: SSH OS
+directories:
+  buildResources: build
+files:
+  - dist/**
+  - "!**/*.map"
+mac:
+  category: public.app-category.developer-tools
+win:
+  target:
+    - nsis
+linux:
+  target:
+    - AppImage

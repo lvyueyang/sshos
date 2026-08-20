@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+/*
+ * 项目语义 token 与 shadcn design token 映射（docs 界面设计 §1.2）
+ * 明暗双主题：:root（light）/ .dark（dark），切换只改根元素 class
+ */
+:root {
+	--bg: #ffffff;
+	--bg2: #f6f8fa;
+	--bg3: #eaeef2;
+	--desktop-bg: linear-gradient(135deg, #e8ecf2, #dfe6ee, #cfd9e6);
+	--ink: #24292f;
+	--muted: #59636e;
+	--rule: #d0d7de;
+	--accent: #1a7f37;
+	--accent2: #0969da;
+	--warn: #9a6700;
+	--danger: #cf222e;
+
+	--background: var(--bg);
+	--foreground: var(--ink);
+	--card: var(--bg2);
+	--border: var(--rule);
+	--primary: var(--accent);
+}
+
+.dark {
+	--bg: #0d1117;
+	--bg2: #161b22;
+	--bg3: #1c2128;
+	--desktop-bg: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+	--ink: #e6edf3;
+	--muted: #8b949e;
+	--rule: #30363d;
+	--accent: #3fb950;
+	--accent2: #58a6ff;
+	--warn: #d29922;
+	--danger: #f85149;
+
+	--background: var(--bg);
+	--foreground: var(--ink);
+	--card: var(--bg2);
+	--border: var(--rule);
+	--primary: var(--accent);
+}
+
+html,
+body,
+#root {
+	height: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--ink);
+	font-family:
+		ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* 表单控件统一 token 样式（连接表单 / 设置面板） */
+input,
+select,
+textarea {
+	width: 100%;
+	border: 1px solid var(--rule);
+	background: var(--bg);
+	color: var(--ink);
+	border-radius: 6px;
+	padding: 6px 8px;
+	font-size: 14px;
+	outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+	border-color: var(--accent);
+}
+
+input[type="checkbox"] {
+	width: auto;
+	accent-color: var(--accent);
+}
+
+/* 连接中状态灯脉冲 */
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.3;
+	}
+}
