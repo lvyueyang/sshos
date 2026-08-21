@@ -118,3 +118,23 @@ describe("分组管理", () => {
 		expect(groups.some((g) => g.id === id && g.name === "开发")).toBe(true);
 	});
 });
+
+describe("crypto master key 桥接（D18）", () => {
+	it("注入 SSHOS_MASTER_KEY 后加解密可用，且与降级密钥互不通用", () => {
+		const prev = process.env.SSHOS_MASTER_KEY;
+		let encWithKey = "";
+		try {
+			process.env.SSHOS_MASTER_KEY = "test-master-key";
+			encWithKey = encrypt("bridge-secret");
+			expect(decrypt(encWithKey)).toBe("bridge-secret");
+		} finally {
+			if (prev === undefined) {
+				delete process.env.SSHOS_MASTER_KEY;
+			} else {
+				process.env.SSHOS_MASTER_KEY = prev;
+			}
+		}
+		// 换回降级密钥（dev-only-master-key）后 GCM 认证失败，无法解密
+		expect(() => decrypt(encWithKey)).toThrow();
+	});
+});

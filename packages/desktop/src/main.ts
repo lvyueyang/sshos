@@ -8,6 +8,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import path from "node:path";
 import { app, BrowserWindow } from "electron";
 import { bootstrap } from "./bootstrap";
+import { getOrCreateMasterKey } from "./secure-key";
 
 const SERVER_PORT = 3000;
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
@@ -58,10 +59,28 @@ function startDevServer(): Promise<void> {
 function startProductionServer(): Promise<void> {
 	const serverDir =
 		process.env.SSHOS_SERVER_DIR ?? path.resolve(__dirname, "../../web");
-	const serverEntry = path.resolve(serverDir, ".output/server/index.mjs");
+	// 服务根目录为 .output：迁移 SQL 随产物分发到 .output/drizzle（web build 脚本复制），
+	// spawn cwd 指向 .output 才能被 runMigrations 的 resolve(cwd, "drizzle") 解析
+	const serverRoot = path.resolve(serverDir, ".output");
+	const serverEntry = path.resolve(serverRoot, "server/index.mjs");
+	// 决策记录 D18：safeStorage 保护 master key，经 SSHOS_MASTER_KEY 桥接给 Nitro 子进程；
+	// NODE_ENV 显式置 production，保证 crypto 降级告警在生产环境生效
+	const env: NodeJS.ProcessEnv = {
+		...process.env,
+		PORT: String(SERVER_PORT),
+		NODE_ENV: "production",
+	};
+	const masterKey = getOrCreateMasterKey();
+	if (masterKey) {
+		env.SSHOS_MASTER_KEY = masterKey;
+	} else {
+		console.warn(
+			"[main] safeStorage 不可用，凭据加密降级公开密钥（等价明文）；生产环境请配置系统密钥环",
+		);
+	}
 	serverProc = spawn(process.execPath, [serverEntry], {
-		cwd: serverDir,
-		env: { ...process.env, PORT: String(SERVER_PORT) },
+		cwd: serverRoot,
+		env,
 		stdio: "inherit",
 	});
 	attachExitGuard();
@@ -94,10 +113,18 @@ if (!gotSingleInstanceLock) {
 }
 
 async function start(): Promise<void> {
-	await bootstrap();
-	const startServer = app.isPackaged ? startProductionServer : startDevServer;
-	await startServer();
-	await createWindow();
+	try {
+		await bootstrap();
+		const startServer = app.isPackaged ? startProductionServer : startDevServer;
+		await startServer();
+		await createWindow();
+	} catch (error) {
+		// 启动失败即退出（fail-fast，对齐迁移语义）：master key 解密失败、服务启动超时等
+		// 不应留下窗口挂着但功能不可用的状态
+		console.error("[main] 启动失败", error);
+		app.exit(1);
+		return;
+	}
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) {

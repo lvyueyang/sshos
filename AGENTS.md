@@ -121,7 +121,7 @@ ssh-os/
 - `node:sqlite`（`DatabaseSync`）+ `drizzle-orm/node-sqlite` 适配器，零原生依赖
 - **事务回调必须同步**（同 better-sqlite3）；普通查询经 drizzle 驱动返回 Promise，服务层统一 `await db.select()` 风格
 - `log` 表枚举：`type` = `ai_audit | terminal_command | policy_decision`；`classification` = `safe | review | block`；`action` = `executed | blocked | pending_approval | approved | rejected | user_input`；`result` = `success | failure | timeout`
-- 敏感凭据（密码 / 私钥 / passphrase）经 Electron `safeStorage` 加密后入库，**不以明文落盘**；系统密钥（`systemKey`）实时读文件不落库
+- 敏感凭据（密码 / 私钥 / passphrase）加密后入库，**不以明文落盘**；加密走 D18 密钥桥接——Electron main 用 `safeStorage` 保护随机 master key（`userData/master.key`），经 `SSHOS_MASTER_KEY` env 注入 Nitro 子进程派生 AES-256-GCM（见 `packages/desktop/src/secure-key.ts`）；系统密钥（`systemKey`）实时读文件不落库
 - 迁移走 `drizzle-kit generate` 生成 SQL + bootstrap `runMigrations()` 程序化迁移，失败即启动失败（fail-fast）
 - 连接会话状态（SSH/PTY/SFTP）是内存态、按 `sessionId` 管理、**不持久化**；仅连接配置落 SQLite
 

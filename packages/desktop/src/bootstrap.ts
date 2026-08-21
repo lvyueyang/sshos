@@ -1,7 +1,7 @@
 /**
  * 启动初始化（docs 技术架构 §9）：应用命名、ssh:// 深链协议注册。
  * 数据库迁移与预置数据由 web server 启动时执行（fail-fast）；
- * 凭据加密（safeStorage 注入 setCredentialEncryptor）为 W4 打包前置，见决策记录「凭据加密降级」。
+ * 凭据加密走 D18 密钥桥接（safeStorage 保护 master key 经 env 注入 Nitro 子进程，见 secure-key.ts）。
  */
 
 import { app, BrowserWindow } from "electron";
