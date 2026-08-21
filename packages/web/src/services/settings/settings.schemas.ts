@@ -51,3 +51,43 @@ export const testConnectionSchema = connectionInputSchema.pick({
 	privateKeyPath: true,
 	passphrase: true,
 });
+
+/** 可序列化的 JSON 值（App 会话状态 / 桌面布局快照的存储形态） */
+export type JsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JsonValue[]
+	| { [key: string]: JsonValue };
+
+/** 读取每连接配置（App 框架 settings 网关） */
+export const getConnectionSettingSchema = z.object({
+	connectionId: z.number().int().positive(),
+	key: z.string().min(1),
+});
+
+/** 写入每连接配置（App 框架 settings 网关，onSave 产物） */
+export const setConnectionSettingSchema = z.object({
+	connectionId: z.number().int().positive(),
+	key: z.string().min(1),
+	value: z.unknown(),
+});
+
+/** App 框架审计记录（ctx.audit.record，落 ai_audit 类日志） */
+export const recordAuditSchema = z.object({
+	sessionId: z.string(),
+	command: z.string().max(2048),
+	classification: z.enum(["safe", "review", "block"]).optional(),
+	action: z
+		.enum([
+			"executed",
+			"blocked",
+			"pending_approval",
+			"approved",
+			"rejected",
+			"user_input",
+		])
+		.optional(),
+	result: z.enum(["success", "failure", "timeout"]).optional(),
+});

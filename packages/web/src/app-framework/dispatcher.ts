@@ -3,15 +3,29 @@
  * 四钩子 onCreate / onRestore / onSave / onShutdown 的顺序执行
  */
 
-import type { AppDefinition } from "./registry";
-import type { AppContext, Disposable, ShutdownReason } from "./types";
+import type {
+	AppContext,
+	AppDefinition,
+	Disposable,
+	ShutdownReason,
+} from "./types";
 
-/** 创建实例：onCreate(ctx)，返回 Disposable */
+/** 创建实例：setup(ctx) 与 lifecycle.onCreate(ctx) 依次执行，返回合并后的 Disposable */
 export function dispatchCreate(
 	def: AppDefinition,
 	ctx: AppContext,
-): Disposable | undefined | void {
-	return def.lifecycle?.onCreate?.(ctx);
+): Disposable | undefined {
+	const setupDisp = def.setup?.(ctx);
+	const lifecycleDisp = def.lifecycle?.onCreate?.(ctx);
+	if (setupDisp || lifecycleDisp) {
+		return {
+			dispose: () => {
+				setupDisp?.dispose?.();
+				lifecycleDisp?.dispose?.();
+			},
+		};
+	}
+	return undefined;
 }
 
 /** 还原状态：有上次保存状态时 onRestore(state) */

@@ -5,11 +5,16 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { batchWriter } from "#/lib/batch-writer";
 import { testConnection } from "#/services/ssh/ssh.server";
 import {
 	connectionInputSchema,
 	createGroupSchema,
 	deleteConnectionSchema,
+	getConnectionSettingSchema,
+	type JsonValue,
+	recordAuditSchema,
+	setConnectionSettingSchema,
 	testConnectionSchema,
 	updateConnectionSchema,
 } from "./settings.schemas";
@@ -18,8 +23,10 @@ import {
 	createGroup,
 	deleteConnection,
 	getConnection,
+	getConnectionSetting,
 	listConnections,
 	listGroups,
+	setConnectionSetting,
 	updateConnection,
 } from "./settings.server";
 
@@ -107,3 +114,37 @@ export const createGroupSFn = createServerFn({ method: "POST" })
 export const testConnectionSFn = createServerFn({ method: "POST" })
 	.validator(testConnectionSchema)
 	.handler(async ({ data }) => testConnection(data));
+
+/** 读取每连接配置（App 框架 settings 网关，key = app.<id>.state / desktop.layout） */
+export const getConnectionSettingSFn = createServerFn({ method: "GET" })
+	.validator(getConnectionSettingSchema)
+	.handler(async ({ data }): Promise<JsonValue | undefined> => {
+		const value = await getConnectionSetting<unknown>(
+			data.connectionId,
+			data.key,
+		);
+		return value as JsonValue | undefined;
+	});
+
+/** 写入每连接配置（upsert） */
+export const setConnectionSettingSFn = createServerFn({ method: "POST" })
+	.validator(setConnectionSettingSchema)
+	.handler(async ({ data }) => {
+		await setConnectionSetting(data.connectionId, data.key, data.value);
+		return { ok: true };
+	});
+
+/** App 框架审计记录（ctx.audit.record 的服务端落库通道） */
+export const recordAuditSFn = createServerFn({ method: "POST" })
+	.validator(recordAuditSchema)
+	.handler(async ({ data }) => {
+		batchWriter.enqueue({
+			type: "ai_audit",
+			sessionId: data.sessionId,
+			command: data.command,
+			classification: data.classification,
+			action: data.action ?? "executed",
+			result: data.result ?? "success",
+		});
+		return { ok: true };
+	});

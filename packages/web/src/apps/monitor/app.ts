@@ -1,18 +1,24 @@
 /**
- * monitor 应用插件（docs 技术架构 §6）：window surface，metrics 能力，单实例。
- * 仪表盘组件消费 /api/metrics/:sessionId 快照流（Server Route 每 2s 一条 NDJSON）。
+ * monitor 应用插件（docs 技术架构 §6）：window + panel 双 surface，metrics 能力，单实例。
+ * 完整监控窗口 + 桌面右上角状态卡片（自启 panel），共用同一份 metrics 快照流。
  */
 
-import type { AppContext, AppManifest } from "#/app-framework/types";
+import type {
+	AppContext,
+	AppDefinition,
+	AppManifest,
+} from "#/app-framework/types";
 
 export const manifest: AppManifest = {
 	id: "monitor",
 	title: "监控",
 	icon: "chart",
 	capabilities: ["metrics"],
-	// 每个 Tab 一个监控实例（一连接一 Tab，仪表盘流与桌面生命周期绑定）
 	singleton: true,
-	surfaces: [{ kind: "window", defaultSize: { w: 640, h: 440 } }],
+	surfaces: [
+		{ kind: "window", defaultSize: { w: 640, h: 440 } },
+		{ kind: "panel", slot: "top-right", autoStart: true },
+	],
 };
 
 export function setup(_ctx: AppContext) {
@@ -22,3 +28,5 @@ export function setup(_ctx: AppContext) {
 		},
 	};
 }
+
+export const app: AppDefinition = { manifest, setup };

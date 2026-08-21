@@ -1,11 +1,10 @@
 /**
- * 系统监控仪表盘（docs 界面设计 §5 / W2）：消费 /api/metrics/:sessionId 快照流，
+ * 系统监控仪表盘（docs 界面设计 §7 / W2）：消费 /api/metrics/:sessionId 快照流，
  * 展示 CPU / 内存 / 磁盘 / 网络实时指标与最近 30 点趋势折线（SVG）。
- * 流式数据仅组件内消费，不进全局 store（决策记录 D10）。
+ * 流式数据仅组件内消费，不进全局 store（决策记录 D10），复用 useMetricsStream hook。
  */
 
-import type { MetricsSnapshot } from "@sshos/core";
-import { useEffect, useRef, useState } from "react";
+import { useMetricsStream } from "#/hooks/use-metrics-stream";
 
 interface MonitorDashboardProps {
 	sessionId: string;
@@ -15,62 +14,7 @@ interface MonitorDashboardProps {
 const MAX_POINTS = 30;
 
 export function MonitorDashboard({ sessionId }: MonitorDashboardProps) {
-	const [points, setPoints] = useState<MetricsSnapshot[]>([]);
-	const [error, setError] = useState<string | null>(null);
-	const abortRef = useRef<AbortController | null>(null);
-
-	useEffect(() => {
-		if (!sessionId) return;
-		const abort = new AbortController();
-		abortRef.current = abort;
-
-		let buffer = "";
-		let disposed = false;
-
-		const pump = async () => {
-			try {
-				const res = await fetch(`/api/metrics/${sessionId}`, {
-					signal: abort.signal,
-				});
-				if (!res.ok || !res.body) {
-					setError(`监控流不可用 (${res.status})`);
-					return;
-				}
-				const reader = res.body.getReader();
-				const decoder = new TextDecoder();
-				for (;;) {
-					const { done, value } = await reader.read();
-					if (done) break;
-					buffer += decoder.decode(value, { stream: true });
-					const lines = buffer.split("\n");
-					buffer = lines.pop() ?? "";
-					for (const line of lines) {
-						if (!line.trim()) continue;
-						try {
-							const snap = JSON.parse(line) as MetricsSnapshot;
-							if (!disposed) {
-								setPoints((prev) => [...prev.slice(-(MAX_POINTS - 1)), snap]);
-							}
-						} catch {
-							// 跳过半截 JSON（流式边界）
-						}
-					}
-				}
-			} catch (err) {
-				if ((err as Error).name !== "AbortError" && !disposed) {
-					setError("监控流已断开");
-				}
-			}
-		};
-		void pump();
-
-		return () => {
-			disposed = true;
-			abort.abort();
-		};
-	}, [sessionId]);
-
-	const latest = points.at(-1);
+	const { points, latest, error } = useMetricsStream(sessionId, MAX_POINTS);
 
 	return (
 		<div className="flex h-full flex-col gap-3 overflow-y-auto bg-transparent p-3 text-sm">

@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as ApiSpikeRouteImport } from './routes/api/spike'
 import { Route as ApiAiChatRouteImport } from './routes/api/ai.chat'
 import { Route as ApiMetricsSessionIdRouteImport } from './routes/api/metrics.$sessionId'
 import { Route as ApiPtySessionIdRouteImport } from './routes/api/pty.$sessionId'
@@ -26,11 +25,6 @@ const IndexRoute = IndexRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSpikeRoute = ApiSpikeRouteImport.update({
-  id: '/api/spike',
-  path: '/api/spike',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAiChatRoute = ApiAiChatRouteImport.update({
@@ -62,7 +56,6 @@ const ApiSftpUploadRoute = ApiSftpUploadRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/spike': typeof ApiSpikeRoute
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
   '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
@@ -72,7 +65,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/spike': typeof ApiSpikeRoute
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
   '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
@@ -83,7 +75,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/spike': typeof ApiSpikeRoute
   '/api/ai/chat': typeof ApiAiChatRoute
   '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
   '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
@@ -95,7 +86,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/api/health'
-    | '/api/spike'
     | '/api/ai/chat'
     | '/api/metrics/$sessionId'
     | '/api/pty/$sessionId'
@@ -105,7 +95,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/api/health'
-    | '/api/spike'
     | '/api/ai/chat'
     | '/api/metrics/$sessionId'
     | '/api/pty/$sessionId'
@@ -115,7 +104,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/api/health'
-    | '/api/spike'
     | '/api/ai/chat'
     | '/api/metrics/$sessionId'
     | '/api/pty/$sessionId'
@@ -126,7 +114,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiHealthRoute: typeof ApiHealthRoute
-  ApiSpikeRoute: typeof ApiSpikeRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
   ApiMetricsSessionIdRoute: typeof ApiMetricsSessionIdRoute
   ApiPtySessionIdRoute: typeof ApiPtySessionIdRoute
@@ -148,13 +135,6 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/spike': {
-      id: '/api/spike'
-      path: '/api/spike'
-      fullPath: '/api/spike'
-      preLoaderRoute: typeof ApiSpikeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ai/chat': {
@@ -198,7 +178,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiHealthRoute: ApiHealthRoute,
-  ApiSpikeRoute: ApiSpikeRoute,
   ApiAiChatRoute: ApiAiChatRoute,
   ApiMetricsSessionIdRoute: ApiMetricsSessionIdRoute,
   ApiPtySessionIdRoute: ApiPtySessionIdRoute,

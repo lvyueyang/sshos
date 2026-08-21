@@ -2,27 +2,35 @@
  * App 实例管理器（docs 技术架构 §6.4）：每 Tab（连接）一个实例。
  * 负责生命周期分发、surface 挂载、布局快照读写（connection_setting）。
  * 实例销毁但状态保留：Tab 关闭 = 实例销毁，onSave 产物落库，下次进入自动还原。
+ * 纯客户端架构：settings / audit / log 由渲染层注入（走 SFn），不直连服务端模块。
  */
 
-import { batchWriter } from "#/lib/batch-writer";
-import { logger } from "#/lib/logger";
-import {
-	getConnectionSetting,
-	setConnectionSetting,
-} from "#/services/settings/settings.server";
 import {
 	dispatchCreate,
 	dispatchRestore,
 	dispatchSave,
 	dispatchShutdown,
 } from "./dispatcher";
-import { type AppDefinition, getApp } from "./registry";
+import { getApp } from "./registry";
 import type {
 	AppContext,
+	AppDefinition,
 	ContextMenuContext,
 	Disposable,
 	ShutdownReason,
 } from "./types";
+
+/** AppManager 外部依赖（渲染层注入，经 SFn 访问服务端） */
+export interface AppManagerDeps {
+	settings: {
+		get(key: string): Promise<unknown>;
+		set(key: string, value: unknown): Promise<void>;
+	};
+	audit: {
+		record(entry: { command: string }): Promise<void>;
+	};
+	log: AppContext["log"];
+}
 
 /** 运行中的 app 实例 */
 interface AppInstance {
@@ -30,7 +38,7 @@ interface AppInstance {
 	disposable: Disposable | undefined;
 }
 
-/** 右键菜单处理器注册表（按 app id 分组） */
+/** 右键菜单处理器注册表（按贡献点 id 分组） */
 type MenuHandler = (ctx: ContextMenuContext) => Promise<unknown> | unknown;
 
 export class AppManager {
@@ -40,7 +48,14 @@ export class AppManager {
 	constructor(
 		private connectionId: number,
 		private sessionId: string,
+		private deps: AppManagerDeps,
 	) {}
+
+	/** 会话变更（重连）时同步 sessionId 与依赖，确保已启动实例的 audit/settings 闭包指向新会话 */
+	updateSession(sessionId: string, deps: AppManagerDeps): void {
+		this.sessionId = sessionId;
+		this.deps = deps;
+	}
 
 	/** 启动 app 实例：有保存状态先 onRestore，返回是否已启动 */
 	async start(id: string): Promise<boolean> {
@@ -49,16 +64,13 @@ export class AppManager {
 		if (this.instances.has(id)) return false;
 
 		const ctx = this.createContext(def);
-		const disposable = dispatchCreate(def, ctx) ?? undefined;
+		const disposable = dispatchCreate(def, ctx);
 
-		const state = await getConnectionSetting<unknown>(
-			this.connectionId,
-			`app.${id}.state`,
-		);
+		const state = await this.deps.settings.get(`app.${id}.state`);
 		dispatchRestore(def, state);
 
 		this.instances.set(id, { def, disposable });
-		logger.debug({ appId: id, sessionId: this.sessionId }, "App 实例启动");
+		this.deps.log.debug(`App 实例启动: ${id}`);
 		return true;
 	}
 
@@ -66,10 +78,10 @@ export class AppManager {
 	async stop(id: string): Promise<boolean> {
 		const inst = this.instances.get(id);
 		if (!inst) return false;
-		this.saveState(id, inst.def);
+		await this.saveState(id, inst.def);
 		inst.disposable?.dispose();
 		this.instances.delete(id);
-		logger.debug({ appId: id, sessionId: this.sessionId }, "App 实例停止");
+		this.deps.log.debug(`App 实例停止: ${id}`);
 		return true;
 	}
 
@@ -89,7 +101,7 @@ export class AppManager {
 		return [...this.instances.keys()];
 	}
 
-	/** 构建当前 Tab 的右键菜单（聚合运行中 app 的贡献项处理器） */
+	/** 查询右键菜单处理器（未注册返回 undefined） */
 	getMenuHandler(id: string): MenuHandler | undefined {
 		return this.menuHandlers.get(id);
 	}
@@ -97,7 +109,7 @@ export class AppManager {
 	private async saveState(id: string, def: AppDefinition): Promise<void> {
 		const state = dispatchSave(def);
 		if (state !== undefined) {
-			await setConnectionSetting(this.connectionId, `app.${id}.state`, state);
+			await this.deps.settings.set(`app.${id}.state`, state);
 		}
 	}
 
@@ -111,7 +123,7 @@ export class AppManager {
 
 		return {
 			session,
-			// 按 capabilities 裁剪 SSH 网关（具体方法由各能力模块在 P4 注入）
+			// 能力声明：框架据此暴露 SSH 网关方法（当前 MVP 窗口组件直连 SFn，网关注入后续迭代）
 			ssh: capabilities.reduce<Record<string, unknown>>((acc, cap) => {
 				acc[cap] = true;
 				return acc;
@@ -121,21 +133,17 @@ export class AppManager {
 			},
 			audit: {
 				record: (entry: Record<string, unknown>) =>
-					batchWriter.enqueue({
-						type: "ai_audit",
-						sessionId: session.sessionId,
+					this.deps.audit.record({
 						command: String(entry.command ?? ""),
-						action: "executed",
-						result: "success",
 					}),
 			},
 			settings: {
 				get: <T>(key: string) =>
-					getConnectionSetting<T>(this.connectionId, key),
-				set: <T>(key: string, value: T) =>
-					setConnectionSetting(this.connectionId, key, value),
+					this.deps.settings.get(key) as Promise<T | undefined>,
+				set: (key: string, value: unknown) =>
+					this.deps.settings.set(key, value),
 			},
-			// UI 能力（openWindow / 面板 / 状态栏写入）由 UI 集成层在 P4 注入
+			// UI 能力（openWindow / 面板写入 / 状态栏写入）后续迭代注入
 			ui: {},
 			menus: {
 				registerHandler: (id: string, handler: MenuHandler): Disposable => {
@@ -144,21 +152,10 @@ export class AppManager {
 				},
 			},
 			lifecycle: {
-				onSave: () => {
-					// app 内保存由 onSave 钩子承载；此处为占位，供 app 主动注册补充保存
-				},
+				onSave: () => {},
 				onShutdown: () => {},
 			},
-			log: {
-				debug: (msg, ...args) =>
-					logger.debug({ appId: def.manifest.id, ...args }, msg),
-				info: (msg, ...args) =>
-					logger.info({ appId: def.manifest.id, ...args }, msg),
-				warn: (msg, ...args) =>
-					logger.warn({ appId: def.manifest.id, ...args }, msg),
-				error: (msg, ...args) =>
-					logger.error({ appId: def.manifest.id, ...args }, msg),
-			},
+			log: this.deps.log,
 		};
 	}
 }

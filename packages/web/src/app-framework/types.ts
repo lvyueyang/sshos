@@ -110,3 +110,17 @@ export interface AppContext {
 export interface Disposable {
 	dispose(): void;
 }
+
+/** app 插件定义：manifest 声明 + setup 绑定生命周期 + 生命周期钩子 */
+export interface AppDefinition {
+	manifest: AppManifest;
+	/** 初始化：返回 Disposable，随实例销毁回收（对齐 VS Code 订阅模式） */
+	setup: (ctx: AppContext) => Disposable | undefined;
+	/** 生命周期四钩子（onCreate / onRestore / onSave / onShutdown） */
+	lifecycle?: {
+		onCreate?(ctx: AppContext): Disposable | undefined;
+		onRestore?(state: unknown): void;
+		onSave?(): unknown;
+		onShutdown?(reason: ShutdownReason): void;
+	};
+}

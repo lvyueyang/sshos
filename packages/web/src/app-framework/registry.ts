@@ -3,27 +3,18 @@
  * 每个 app 以 manifest + setup 定义，启动时按 capabilities 裁剪上下文。
  */
 
-import type { AppContext, AppManifest, Disposable } from "./types";
-
-/** app 插件定义：manifest 声明 + setup 绑定生命周期 */
-export interface AppDefinition {
-	manifest: AppManifest;
-	setup: (ctx: AppContext) => Disposable | undefined | void;
-	/** 生命周期钩子（onCreate / onRestore / onSave / onShutdown） */
-	lifecycle?: {
-		onCreate?(ctx: AppContext): Disposable | undefined | void;
-		onRestore?(state: unknown): void;
-		onSave?(): unknown;
-		onShutdown?(reason: "systemExit" | "tabClose" | "userClose"): void;
-	};
-}
+import type { AppDefinition } from "./types";
 
 const registry = new Map<string, AppDefinition>();
 
-/** 注册内置 app；重复 id 抛错（先注册者优先语义由调用方保证） */
+/**
+ * 注册内置 app；重复 id 以先注册者为准并告警（幂等，避免开发期模块热更新
+ * 重新执行模块作用域时重复注册抛错）。
+ */
 export function registerApp(def: AppDefinition): void {
 	if (registry.has(def.manifest.id)) {
-		throw new Error(`App 已注册: ${def.manifest.id}`);
+		console.warn(`App 已注册，忽略重复注册: ${def.manifest.id}`);
+		return;
 	}
 	registry.set(def.manifest.id, def);
 }
@@ -42,5 +33,26 @@ export function listApps(): AppDefinition[] {
 export function listWindowApps(): AppDefinition[] {
 	return listApps().filter((d) =>
 		d.manifest.surfaces.some((s) => s.kind === "window"),
+	);
+}
+
+/** 注册声明 panel surface 的 app（桌面面板槽位渲染用） */
+export function listPanelApps(): AppDefinition[] {
+	return listApps().filter((d) =>
+		d.manifest.surfaces.some((s) => s.kind === "panel"),
+	);
+}
+
+/** 注册声明 statusbar surface 的 app（任务栏槽位渲染用） */
+export function listStatusbarApps(): AppDefinition[] {
+	return listApps().filter((d) =>
+		d.manifest.surfaces.some((s) => s.kind === "statusbar"),
+	);
+}
+
+/** 声明 autoStart surface 的 app（自启面板 / 状态栏） */
+export function listAutoStartApps(): AppDefinition[] {
+	return listApps().filter((d) =>
+		d.manifest.surfaces.some((s) => "autoStart" in s && s.autoStart === true),
 	);
 }

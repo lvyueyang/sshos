@@ -85,7 +85,15 @@ async function createWindow(): Promise<void> {
 	});
 }
 
-app.whenReady().then(async () => {
+// ssh:// 深链与多实例聚焦依赖单实例锁：未取得锁则本实例直接退出（由已运行实例接管）
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+	app.quit();
+} else {
+	app.whenReady().then(() => void start());
+}
+
+async function start(): Promise<void> {
 	await bootstrap();
 	const startServer = app.isPackaged ? startProductionServer : startDevServer;
 	await startServer();
@@ -96,7 +104,7 @@ app.whenReady().then(async () => {
 			void createWindow();
 		}
 	});
-});
+}
 
 app.on("window-all-closed", () => {
 	if (process.platform !== "darwin") app.quit();
