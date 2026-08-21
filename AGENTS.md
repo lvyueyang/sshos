@@ -234,6 +234,7 @@ ssh-os/
 - **策略引擎挂载边界**：覆盖全部写操作类 SFn（命令执行 + SFTP 变更写操作）；`sendInputSFn` 逐键流不挂策略（见 docs/02 §5.3）
 - **审批无绕过路径**：review 级命令必须经 Approval Registry + `approvalSFn` 重放执行，不存在"直接执行"路径
 - **Prompt 注入隔离**：systemPrompt 代码硬编码，用户消息不得覆盖；`chatSchema` 排除 `system` 角色
+- **全局请求鉴权（D19）**：SFn 与 `/api/*` 端点经 TanStack request 中间件统一校验 `X-SSHOS-TOKEN`（main 注入 `SSHOS_AUTH_TOKEN`）；页面/静态资源/health 豁免；无 token env（纯浏览器 dev:web）不启用；渲染层请求统一经 `lib/api-fetch.ts` / `serverFns.fetch` 携带 token，禁止绕过
 - 凭据经 safeStorage 加密，SSH 密钥永不经过 renderer
 
 ## 错误处理与通知

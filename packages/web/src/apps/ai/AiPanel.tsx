@@ -15,6 +15,7 @@ import {
 	ApprovalDialog,
 	type PendingApproval,
 } from "#/components/ApprovalDialog";
+import { apiFetch } from "#/lib/api-fetch";
 
 interface AiPanelProps {
 	sessionId: string;
@@ -75,7 +76,7 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 		setMessages([...history, { role: "assistant", content: "" }]);
 		setLoading(true);
 		try {
-			const res = await fetch("/api/ai/chat", {
+			const res = await apiFetch("/api/ai/chat", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ sessionId, messages: history }),

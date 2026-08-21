@@ -2,6 +2,8 @@
  * ssh:// 深链转发（docs 界面设计 §4.6）：
  * Electron main 经 HTTP POST 注入深链 URL（架构铁律：渲染层不直连 ipcMain），
  * 渲染层 GET 消费并清空。URL 存内存态，单窗口生命周期足够。
+ * 鉴权由全局 request 中间件统一覆盖（/api/* 路由校验 X-SSHOS-TOKEN，决策记录 D19），
+ * 本路由仅做 ssh:// 载荷校验。
  */
 
 import { defineServerRoute } from "#/types/server-route";

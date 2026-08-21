@@ -6,6 +6,7 @@
 
 import type { Terminal as TerminalType } from "@xterm/xterm";
 import { useEffect, useRef, useState } from "react";
+import { apiFetch } from "#/lib/api-fetch";
 import {
 	closePtySFn,
 	createPtySFn,
@@ -101,7 +102,7 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 
 				// 订阅 PTY 输出流（Server Route）
 				abort = new AbortController();
-				const res = await fetch(`/api/pty/${sessionId}`, {
+				const res = await apiFetch(`/api/pty/${sessionId}`, {
 					signal: abort.signal,
 				});
 				if (!res.ok || !res.body) return;

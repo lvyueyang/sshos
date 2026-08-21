@@ -15,6 +15,7 @@ import {
 	ApprovalDialog,
 	type PendingApproval,
 } from "#/components/ApprovalDialog";
+import { apiFetch, authHeaders } from "#/lib/api-fetch";
 import {
 	FileManagerMenu,
 	type MenuAction,
@@ -435,7 +436,7 @@ function iconFor(item: FileInfo): string {
 
 /** 触发浏览器下载远程文件（Server Route 直通） */
 async function downloadFile(sessionId: string, path: string, filename: string) {
-	const res = await fetch(
+	const res = await apiFetch(
 		`/api/sftp/download?sessionId=${encodeURIComponent(sessionId)}&path=${encodeURIComponent(path)}`,
 	);
 	if (!res.ok) throw new Error(`下载失败: ${res.status}`);
@@ -462,6 +463,10 @@ async function uploadFiles(
 			"POST",
 			`/api/sftp/upload?sessionId=${encodeURIComponent(sessionId)}&dirPath=${encodeURIComponent(dirPath)}&filename=${encodeURIComponent(file.name)}`,
 		);
+		// 全局鉴权（D19）：XHR 同样携带 token
+		for (const [k, v] of Object.entries(authHeaders())) {
+			xhr.setRequestHeader(k, v);
+		}
 		xhr.upload.onprogress = (e) => {
 			if (e.lengthComputable) {
 				const progress = Math.round((e.loaded / e.total) * 100);

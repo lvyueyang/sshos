@@ -5,6 +5,7 @@
  */
 
 import { type ChildProcess, spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { app, BrowserWindow } from "electron";
 import { bootstrap, onDeepLink, pendingDeepLink } from "./bootstrap";
@@ -13,6 +14,12 @@ import { initUpdater } from "./updater";
 
 const SERVER_PORT = 3000;
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
+
+// 统一鉴权 token（决策记录 D19）：保护 web server 的 SFn 与 /api/* 端点，
+// 防本地进程 / 浏览器恶意页面调用（威胁模型见 docs/04 D19）。
+// 经 env 共享给子进程（server 校验）、经 additionalArguments 给 preload（渲染层取 header）
+const authToken = randomBytes(16).toString("hex");
+process.env.SSHOS_AUTH_TOKEN = authToken;
 
 let mainWindow: BrowserWindow | null = null;
 let serverProc: ChildProcess | null = null;
@@ -101,6 +108,8 @@ async function createWindow(): Promise<void> {
 			preload: path.join(__dirname, "preload.js"),
 			contextIsolation: true,
 			nodeIntegration: false,
+			// 鉴权 token 经 additionalArguments 传 preload（渲染层取 header，不直连 ipc）
+			additionalArguments: [`--ssh-os-auth-token=${authToken}`],
 		},
 	});
 	await mainWindow.loadURL(SERVER_URL);
@@ -110,12 +119,20 @@ async function createWindow(): Promise<void> {
 }
 
 /** 把 ssh:// 深链经 HTTP 推给 web server（渲染层经 GET 消费，不直连 ipcMain，docs 界面设计 §4.6） */
-function pushDeepLink(url: string): void {
-	fetch(`${SERVER_URL}/api/deeplink`, {
-		method: "POST",
-		headers: { "Content-Type": "text/plain" },
-		body: url,
-	}).catch((err) => console.error("[main] 深链推送失败", err));
+async function pushDeepLink(url: string): Promise<void> {
+	try {
+		await fetch(`${SERVER_URL}/api/deeplink`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "text/plain",
+				// 全局鉴权（D19）：/api/* 路由需 X-SSHOS-TOKEN
+				"X-SSHOS-TOKEN": authToken,
+			},
+			body: url,
+		});
+	} catch (err) {
+		console.error("[main] 深链接送失败", err);
+	}
 }
 
 // ssh:// 深链与多实例聚焦依赖单实例锁：未取得锁则本实例直接退出（由已运行实例接管）
@@ -131,6 +148,11 @@ async function start(): Promise<void> {
 		await bootstrap();
 		const startServer = app.isPackaged ? startProductionServer : startDevServer;
 		await startServer();
+		// 冷启动深链先推给 server 再建窗口：确保渲染层挂载 GET 确定性命中
+		//（createWindow 后才 POST 会与挂载 GET 竞态，且新窗口 focus 事件先于监听注册，深链将悬置）
+		if (pendingDeepLink) {
+			await pushDeepLink(pendingDeepLink);
+		}
 		await createWindow();
 	} catch (error) {
 		// 启动失败即退出（fail-fast，对齐迁移语义）：master key 解密失败、服务启动超时等
@@ -143,11 +165,8 @@ async function start(): Promise<void> {
 	// 后台自动更新（仅打包环境，见 updater.ts）
 	initUpdater();
 
-	// 深链接线：捕获的 ssh:// URL 推给 web server，渲染层消费（docs §4.6）
-	onDeepLink(pushDeepLink);
-	if (pendingDeepLink) {
-		pushDeepLink(pendingDeepLink);
-	}
+	// 深链接线：运行时捕获的 ssh:// URL 推给 web server，渲染层消费（docs §4.6）
+	onDeepLink((url) => void pushDeepLink(url));
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) {

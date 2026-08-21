@@ -5,6 +5,7 @@
 
 import type { MetricsSnapshot } from "@sshos/core";
 import { useEffect, useState } from "react";
+import { apiFetch } from "#/lib/api-fetch";
 
 interface UseMetricsStreamResult {
 	points: MetricsSnapshot[];
@@ -28,7 +29,7 @@ export function useMetricsStream(
 
 		const pump = async () => {
 			try {
-				const res = await fetch(`/api/metrics/${sessionId}`, {
+				const res = await apiFetch(`/api/metrics/${sessionId}`, {
 					signal: abort.signal,
 				});
 				if (!res.ok || !res.body) {

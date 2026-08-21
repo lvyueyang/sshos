@@ -30,6 +30,14 @@ describe("parseSshDeepLink", () => {
 		});
 	});
 
+	it("IPv6 主机去除方括号", () => {
+		expect(parseSshDeepLink("ssh://user@[::1]:2222")).toEqual({
+			host: "::1",
+			port: 2222,
+			username: "user",
+		});
+	});
+
 	it("非法 URL 返回空 host", () => {
 		expect(parseSshDeepLink("not a url")).toEqual({
 			host: "",

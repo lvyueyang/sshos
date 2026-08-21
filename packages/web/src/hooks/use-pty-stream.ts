@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { apiFetch } from "#/lib/api-fetch";
 
 export function usePtyStream(
 	sessionId: string | undefined,
@@ -19,7 +20,7 @@ export function usePtyStream(
 
 		void (async () => {
 			try {
-				const res = await fetch(`/api/pty/${sessionId}`, {
+				const res = await apiFetch(`/api/pty/${sessionId}`, {
 					signal: controller.signal,
 				});
 				if (!res.ok || !res.body) return;

@@ -7,11 +7,12 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
+import { apiFetch } from "#/lib/api-fetch";
 import { listConnectionsSFn } from "#/services/settings/settings.functions";
 import { useUiStore } from "#/stores/ui";
 import { useConnect } from "./use-connect";
 
-/** 解析 ssh:// 深链，返回 host/port/username（缺失字段为空串 / 默认端口） */
+/** 解析 ssh:// 深链，返回 host/port/username（缺失字段为空串 / 默认端口；IPv6 去方括号） */
 export function parseSshDeepLink(url: string): {
 	host: string;
 	port: number;
@@ -19,7 +20,8 @@ export function parseSshDeepLink(url: string): {
 } {
 	try {
 		const u = new URL(url);
-		const host = u.hostname || "";
+		// Node 的 URL.hostname 对 IPv6 返回带方括号的 "[::1]"，与已保存连接的 host 需一致，去掉括号
+		const host = (u.hostname || "").replace(/^\[|\]$/g, "");
 		const port = u.port ? Number(u.port) : 22;
 		const username = u.username || "";
 		return { host, port, username };
@@ -30,7 +32,7 @@ export function parseSshDeepLink(url: string): {
 
 /** 消费一次深链（GET 后由服务端清空） */
 async function fetchDeepLink(): Promise<string | null> {
-	const res = await fetch("/api/deeplink");
+	const res = await apiFetch("/api/deeplink");
 	if (!res.ok) return null;
 	if (res.status === 204) return null;
 	const body = (await res.json()) as { url?: string };
@@ -42,33 +44,36 @@ export function useDeepLink(): void {
 	const queryClient = useQueryClient();
 	const { connectConnection } = useConnect();
 	const requestNewConnection = useUiStore((s) => s.requestNewConnection);
-
 	const handle = useCallback(async () => {
-		const raw = await fetchDeepLink();
-		if (!raw) return;
-		const { host, port, username } = parseSshDeepLink(raw);
-		if (!host) return;
+		try {
+			const raw = await fetchDeepLink();
+			if (!raw) return;
+			const { host, port, username } = parseSshDeepLink(raw);
+			if (!host) return;
 
-		// 命中已保存连接（host + port + username 匹配）→ 直接连接（聚焦已有 Tab）
-		const rows = await listConnectionsSFn();
-		const match = rows.find(
-			(c) =>
-				c.host === host && (c.port ?? 22) === port && c.username === username,
-		);
-		if (match) {
-			await connectConnection(match.id, match.title);
-			return;
+			// 命中已保存连接（host + port + username 匹配）→ 直接连接（聚焦已有 Tab）
+			const rows = await listConnectionsSFn();
+			const match = rows.find(
+				(c) =>
+					c.host === host && (c.port ?? 22) === port && c.username === username,
+			);
+			if (match) {
+				await connectConnection(match.id, match.title);
+				return;
+			}
+			// 未命中 → 预填新建连接抽屉（host/port/username）
+			requestNewConnection({
+				title: `${username}@${host}`,
+				host,
+				port,
+				username,
+			});
+			void queryClient.invalidateQueries({ queryKey: ["connections"] });
+		} catch (err) {
+			// 消费失败（server 瞬时不可达等）不阻塞；下次 focus 会重试
+			console.error("深链消费失败:", err);
 		}
-		// 未命中 → 预填新建连接抽屉（host/port/username）
-		requestNewConnection({
-			title: `${username}@${host}`,
-			host,
-			port,
-			username,
-		});
-		void queryClient.invalidateQueries({ queryKey: ["connections"] });
 	}, [connectConnection, queryClient, requestNewConnection]);
-
 	useEffect(() => {
 		void handle();
 		const onFocus = () => void handle();
