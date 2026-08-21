@@ -38,8 +38,12 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 			// xterm 纯 client：动态加载，SSR 阶段不执行。
 			// 注意：@xterm/xterm 的 ESM 只有 named exports（无 default），
 			// 生产构建下 `import(...).default` 为 undefined，必须从 namespace 解构
-			const xtermMod = await import("@xterm/xterm");
-			const fitMod = await import("@xterm/addon-fit");
+			// xterm 核心样式必须随模块加载（缺失会导致终端只渲染出一个裸露 textarea）
+			const [xtermMod, fitMod] = await Promise.all([
+				import("@xterm/xterm"),
+				import("@xterm/addon-fit"),
+				import("@xterm/xterm/css/xterm.css").then(() => undefined),
+			]);
 			if (disposed) return;
 
 			const { Terminal } = xtermMod;
