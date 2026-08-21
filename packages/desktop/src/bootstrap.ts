@@ -6,18 +6,36 @@
 
 import { app, BrowserWindow } from "electron";
 
-/** 最近一次 ssh:// 深链 URL（渲染层发起连接时消费，见 docs 界面设计 §4.6） */
+/** 最近一次 ssh:// 深链 URL（渲染层经 web server 消费，见 docs 界面设计 §4.6） */
 export let pendingDeepLink: string | null = null;
+
+/** 深链处理器（main 注册，把 URL 推到 web server，渲染层不直连 ipcMain） */
+let deepLinkHandler: ((url: string) => void) | null = null;
+
+/** 注册深链处理器：每次捕获到 ssh:// 深链都会回调 */
+export function onDeepLink(handler: (url: string) => void): void {
+	deepLinkHandler = handler;
+}
+
+/** 统一深链入口：暂存 + 回调 + 聚焦窗口 */
+function handleDeepLink(url: string): void {
+	if (!url.startsWith("ssh://")) return;
+	pendingDeepLink = url;
+	deepLinkHandler?.(url);
+	focusMainWindow();
+}
 
 // 事件监听在模块作用域注册：macOS 冷启动点击 ssh:// 链接时 open-url 先于 ready 触发，
 // 若在 bootstrap（ready 后）才注册会漏掉首次深链；此时窗口未建，仅暂存 pendingDeepLink
-app.on("second-instance", () => {
+app.on("second-instance", (_event, argv) => {
+	// Windows / Linux 深链随 argv 传入
+	const url = argv.find((a) => a.startsWith("ssh://"));
+	if (url) handleDeepLink(url);
 	focusMainWindow();
 });
 app.on("open-url", (event, url) => {
 	event.preventDefault();
-	pendingDeepLink = url;
-	focusMainWindow();
+	handleDeepLink(url);
 });
 
 /** 聚焦主窗口（最小化时还原）；窗口未创建时无操作 */

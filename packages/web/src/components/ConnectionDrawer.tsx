@@ -13,6 +13,7 @@ import {
 	updateConnectionSFn,
 } from "#/services/settings/settings.functions";
 import type { ConnectionInput } from "#/services/settings/settings.schemas";
+import type { ConnectionPrefill } from "#/stores/ui";
 
 const EMPTY_INPUT: ConnectionInput = {
 	title: "",
@@ -29,6 +30,8 @@ const EMPTY_INPUT: ConnectionInput = {
 interface DrawerProps {
 	mode: "create" | "edit";
 	connectionId?: number;
+	/** 新建模式的预填内容（ssh:// 深链解析，docs §4.6） */
+	prefill?: ConnectionPrefill;
 	onClose: () => void;
 	onSaved: () => void;
 }
@@ -41,12 +44,24 @@ type TestResult = {
 export function ConnectionDrawer({
 	mode,
 	connectionId,
+	prefill,
 	onClose,
 	onSaved,
 }: DrawerProps) {
 	const { t } = useTranslation();
 	const queryClient = useQueryClient();
-	const [form, setForm] = useState<ConnectionInput>(EMPTY_INPUT);
+	// 新建模式带预填（深链）时直接初始化表单；否则用空表单
+	const [form, setForm] = useState<ConnectionInput>(
+		mode === "create" && prefill
+			? {
+					...EMPTY_INPUT,
+					title: prefill.title ?? "",
+					host: prefill.host ?? "",
+					port: prefill.port ?? 22,
+					username: prefill.username ?? "",
+				}
+			: EMPTY_INPUT,
+	);
 	const [testing, setTesting] = useState(false);
 	const [testResult, setTestResult] = useState<TestResult>(null);
 	const [saving, setSaving] = useState(false);

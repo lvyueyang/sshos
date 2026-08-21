@@ -6,12 +6,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { connectSFn } from "#/apps/terminal/terminal.functions";
+import { useConnect } from "#/hooks/use-connect";
 import {
 	listConnectionsSFn,
 	listGroupsSFn,
 } from "#/services/settings/settings.functions";
-import { useUiStore } from "#/stores/ui";
+import { type ConnectionPrefill, useUiStore } from "#/stores/ui";
 import { useDesktopStore } from "#/stores/windows";
 import { ConnectionDrawer } from "./ConnectionDrawer";
 
@@ -45,24 +45,24 @@ export function Sidebar() {
 	const queryClient = useQueryClient();
 	const [search, setSearch] = useState("");
 	const [drawer, setDrawer] = useState<
-		{ mode: "create" } | { mode: "edit"; connectionId: number } | null
+		| { mode: "create" }
+		| { mode: "create"; prefill: ConnectionPrefill }
+		| { mode: "edit"; connectionId: number }
+		| null
 	>(null);
 
-	// 消费首页空状态的新建连接信号（首次引导），唤起抽屉后归零
+	// 消费首页空状态 / ssh:// 深链的新建连接信号，唤起抽屉（带预填）后归零
 	const connectionDrawerSignal = useUiStore((s) => s.connectionDrawerSignal);
 	const consumeNewConnection = useUiStore((s) => s.consumeNewConnection);
 	useEffect(() => {
 		if (connectionDrawerSignal > 0) {
-			setDrawer({ mode: "create" });
-			consumeNewConnection();
+			const prefill = consumeNewConnection();
+			setDrawer(prefill ? { mode: "create", prefill } : { mode: "create" });
 		}
 	}, [connectionDrawerSignal, consumeNewConnection]);
 
 	const tabs = useDesktopStore((s) => s.tabs);
-	const openTab = useDesktopStore((s) => s.openTab);
-	const focusTab = useDesktopStore((s) => s.focusTab);
-	const setSession = useDesktopStore((s) => s.setSession);
-	const openWindow = useDesktopStore((s) => s.openWindow);
+	const { connectConnection } = useConnect();
 
 	const { data: connections = [] } = useQuery({
 		queryKey: ["connections"],
@@ -80,25 +80,6 @@ export function Sidebar() {
 					c.host.includes(search),
 			)
 		: connections;
-
-	/** 点击连接：已打开则聚焦，否则建立 SSH 会话并打开桌面 Tab + 终端窗口 */
-	const handleConnect = async (connectionId: number, title: string) => {
-		if (tabs.some((t) => t.connectionId === connectionId)) {
-			focusTab(connectionId);
-			return;
-		}
-		openTab({ connectionId, title, status: "connecting" });
-		try {
-			const { sessionId } = await connectSFn({ data: { connectionId } });
-			setSession(connectionId, sessionId, "online");
-			void queryClient.invalidateQueries({ queryKey: ["connections"] });
-			// 打开首个终端窗口（窗口内自行 createPty 消费流）
-			openWindow(connectionId, "terminal-1", { x: 60, y: 40, w: 720, h: 480 });
-		} catch (err) {
-			setSession(connectionId, undefined, "error");
-			console.error("连接失败:", err);
-		}
-	};
 
 	return (
 		<aside
@@ -154,7 +135,7 @@ export function Sidebar() {
 											key={c.id}
 											connection={c}
 											status={connectionStatus(c.id, tabs)}
-											onOpen={() => handleConnect(c.id, c.title)}
+											onOpen={() => void connectConnection(c.id, c.title)}
 											onEdit={() =>
 												setDrawer({ mode: "edit", connectionId: c.id })
 											}
@@ -170,7 +151,7 @@ export function Sidebar() {
 									key={c.id}
 									connection={c}
 									status={connectionStatus(c.id, tabs)}
-									onOpen={() => handleConnect(c.id, c.title)}
+									onOpen={() => void connectConnection(c.id, c.title)}
 									onEdit={() => setDrawer({ mode: "edit", connectionId: c.id })}
 								/>
 							))}
@@ -196,6 +177,7 @@ export function Sidebar() {
 			{drawer && (
 				<ConnectionDrawer
 					mode={drawer.mode}
+					prefill={"prefill" in drawer ? drawer.prefill : undefined}
 					connectionId={
 						drawer.mode === "edit" ? drawer.connectionId : undefined
 					}

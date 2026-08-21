@@ -7,7 +7,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import path from "node:path";
 import { app, BrowserWindow } from "electron";
-import { bootstrap } from "./bootstrap";
+import { bootstrap, onDeepLink, pendingDeepLink } from "./bootstrap";
 import { getOrCreateMasterKey } from "./secure-key";
 import { initUpdater } from "./updater";
 
@@ -109,6 +109,15 @@ async function createWindow(): Promise<void> {
 	});
 }
 
+/** 把 ssh:// 深链经 HTTP 推给 web server（渲染层经 GET 消费，不直连 ipcMain，docs 界面设计 §4.6） */
+function pushDeepLink(url: string): void {
+	fetch(`${SERVER_URL}/api/deeplink`, {
+		method: "POST",
+		headers: { "Content-Type": "text/plain" },
+		body: url,
+	}).catch((err) => console.error("[main] 深链推送失败", err));
+}
+
 // ssh:// 深链与多实例聚焦依赖单实例锁：未取得锁则本实例直接退出（由已运行实例接管）
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -133,6 +142,12 @@ async function start(): Promise<void> {
 
 	// 后台自动更新（仅打包环境，见 updater.ts）
 	initUpdater();
+
+	// 深链接线：捕获的 ssh:// URL 推给 web server，渲染层消费（docs §4.6）
+	onDeepLink(pushDeepLink);
+	if (pendingDeepLink) {
+		pushDeepLink(pendingDeepLink);
+	}
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) {
