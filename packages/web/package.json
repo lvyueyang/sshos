@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite dev --port 3000",
-    "build": "NODE_ENV=production vite build && node --eval \"require('node:fs').cpSync('drizzle', '.output/drizzle', {recursive:true})\"",
+    "build": "NODE_ENV=production vite build && node scripts/prepare-server.mjs",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
     "check": "tsc --noEmit && biome check",

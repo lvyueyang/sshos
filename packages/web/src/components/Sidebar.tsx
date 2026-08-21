@@ -4,13 +4,14 @@
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { connectSFn } from "#/apps/terminal/terminal.functions";
 import {
 	listConnectionsSFn,
 	listGroupsSFn,
 } from "#/services/settings/settings.functions";
+import { useUiStore } from "#/stores/ui";
 import { useDesktopStore } from "#/stores/windows";
 import { ConnectionDrawer } from "./ConnectionDrawer";
 
@@ -46,6 +47,16 @@ export function Sidebar() {
 	const [drawer, setDrawer] = useState<
 		{ mode: "create" } | { mode: "edit"; connectionId: number } | null
 	>(null);
+
+	// 消费首页空状态的新建连接信号（首次引导），唤起抽屉后归零
+	const connectionDrawerSignal = useUiStore((s) => s.connectionDrawerSignal);
+	const consumeNewConnection = useUiStore((s) => s.consumeNewConnection);
+	useEffect(() => {
+		if (connectionDrawerSignal > 0) {
+			setDrawer({ mode: "create" });
+			consumeNewConnection();
+		}
+	}, [connectionDrawerSignal, consumeNewConnection]);
 
 	const tabs = useDesktopStore((s) => s.tabs);
 	const openTab = useDesktopStore((s) => s.openTab);

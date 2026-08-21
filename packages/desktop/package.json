@@ -5,16 +5,19 @@
   "main": "dist/main.js",
   "scripts": {
     "dev": "tsc && electron .",
-    "build": "tsc",
+    "build": "tsc && node scripts/generate-icon.mjs",
     "check": "tsc --noEmit && biome check",
     "format": "biome format",
     "lint": "biome lint",
-    "lint:fix": "biome check --write"
+    "lint:fix": "biome check --write",
+    "pack:dir": "pnpm --filter @sshos/web build && pnpm build && electron-builder --dir",
+    "dist": "pnpm --filter @sshos/web build && pnpm build && electron-builder"
   },
   "dependencies": {
-    "@sshos/web": "workspace:*"
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
+    "@sshos/web": "workspace:*",
     "@types/node": "^24.13.3",
     "electron": "^43.4.1",
     "electron-builder": "^26.15.3",

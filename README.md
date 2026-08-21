@@ -2,7 +2,7 @@
 
 以**纯 SSH 协议、零 agent** 把远程 Linux 的文件、进程、软件、Docker 以桌面隐喻可视化呈现。一个 SSH 连接 = 一个 OS 桌面 Tab，用户像操作本地电脑一样操作远程服务器，AI 作为"第二消费者"接入同一套读写网关，所有危险命令经策略引擎拦截。
 
-> 当前阶段：P0-P3 已落地（脚手架 / SSH 引擎 / 策略分类器 / web 基座），W0 三条流 spike 完成（PTY / metrics 流实测 + Pi SDK 定稿），SSH 集成测试经 Docker 测试机接入，详见 `docs/`。
+> 当前阶段：P0-P3 已落地（脚手架 / SSH 引擎 / 策略分类器 / web 基座），W0-W3 全部完成（流式链路 / SSH 终端 / SFTP 文件与监控 / AI 安全闭环），W4 打包发布完成（三平台 electron-builder 配置 / 自动更新 / 开源仓库 / CI），详见 `docs/`。
 
 ## 特性
 
@@ -45,6 +45,8 @@ pnpm dev:web
 | `pnpm format` | 全部包 Biome 格式化 |
 | `pnpm test` | 全部包单元测试 |
 | `pnpm build` | 生产构建（web 的 Nitro 产物） |
+| `pnpm dist` | 打包安装包（macOS dmg / Windows nsis / Linux AppImage，自动更新源为 GitHub Releases） |
+| `pnpm dist:pack` | 仅打包解包目录（`dist-pkg/mac-arm64`，本地验证产物用） |
 
 ## 工程结构
 

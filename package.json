@@ -12,7 +12,9 @@
     "lint:fix": "pnpm -r --parallel lint:fix",
     "format": "pnpm -r format",
     "test": "pnpm -r --parallel test",
-    "build": "pnpm --filter @sshos/web build"
+    "build": "pnpm --filter @sshos/web build",
+    "dist": "pnpm --filter @sshos/desktop dist",
+    "dist:pack": "pnpm --filter @sshos/desktop pack:dir"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.7",

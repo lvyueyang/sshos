@@ -2,14 +2,40 @@ appId: com.sshos.app
 productName: SSH OS
 directories:
   buildResources: build
+  output: dist-pkg
 files:
   - dist/**
   - "!**/*.map"
+# web 的 Nitro 产物随包分发：resources/server/.output 下含 server 入口与迁移 SQL（drizzle）
+# 运行期 SSHOS_SERVER_DIR 由 main.ts 默认指向 process.resourcesPath/server（W4 决策）
+extraResources:
+  - from: ../web/.output
+    to: server/.output
+    filter:
+      - "**/*"
+      - "!**/*.map"
+# electron-updater 更新源：GitHub Releases（owner/repo 取自 git remote lvyueyang/sshos）
+publish:
+  provider: github
+  owner: lvyueyang
+  repo: sshos
+  releaseType: draft
 mac:
   category: public.app-category.developer-tools
+  icon: build/icon.png
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
 win:
+  icon: build/icon.png
   target:
     - nsis
 linux:
+  icon: build/icon.png
   target:
     - AppImage
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

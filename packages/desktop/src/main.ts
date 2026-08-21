@@ -9,6 +9,7 @@ import path from "node:path";
 import { app, BrowserWindow } from "electron";
 import { bootstrap } from "./bootstrap";
 import { getOrCreateMasterKey } from "./secure-key";
+import { initUpdater } from "./updater";
 
 const SERVER_PORT = 3000;
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
@@ -54,11 +55,15 @@ function startDevServer(): Promise<void> {
 
 /**
  * 生产模式：启动 web 的 Nitro 产物（.output/server/index.mjs）。
- * 打包后产物目录由 SSHOS_SERVER_DIR 指定，W4 由 electron-builder extraResources 注入。
+ * 打包后服务目录由 electron-builder extraResources 注入到 process.resourcesPath/server（见 electron-builder.yml），
+ * 可用 SSHOS_SERVER_DIR 环境变量覆盖（本地调试）。
  */
 function startProductionServer(): Promise<void> {
 	const serverDir =
-		process.env.SSHOS_SERVER_DIR ?? path.resolve(__dirname, "../../web");
+		process.env.SSHOS_SERVER_DIR ??
+		(app.isPackaged
+			? path.join(process.resourcesPath, "server")
+			: path.resolve(__dirname, "../../web"));
 	// 服务根目录为 .output：迁移 SQL 随产物分发到 .output/drizzle（web build 脚本复制），
 	// spawn cwd 指向 .output 才能被 runMigrations 的 resolve(cwd, "drizzle") 解析
 	const serverRoot = path.resolve(serverDir, ".output");
@@ -125,6 +130,9 @@ async function start(): Promise<void> {
 		app.exit(1);
 		return;
 	}
+
+	// 后台自动更新（仅打包环境，见 updater.ts）
+	initUpdater();
 
 	app.on("activate", () => {
 		if (BrowserWindow.getAllWindows().length === 0) {

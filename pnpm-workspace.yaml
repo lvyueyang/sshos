@@ -23,6 +23,11 @@ minimumReleaseAgeExclude:
   - '@tanstack/start-storage-context@1.167.27'
   - electron@43.4.1
 
+# app-builder-lib 26.15.3 代码引用 @electron/get 的 ElectronDownloadCacheMode（v5 才有），
+# 但其声明为 ^3.0.0；强制解析 v5 以修复 electron-builder 打包崩溃
+overrides:
+  '@electron/get': ^5.1.0
+
 # pnpm 10+ 默认拦截依赖的构建脚本，白名单放行必要的原生/二进制依赖
 onlyBuiltDependencies:
   - electron
