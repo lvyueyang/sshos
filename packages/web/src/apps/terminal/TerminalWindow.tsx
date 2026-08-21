@@ -53,6 +53,14 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 			});
 			const fit = new FitAddon();
 			term.loadAddon(fit);
+			// WebGL 渲染（docs 界面设计 §5.1）：GPU 加速单元格渲染；WebGL2 不可用时回退 DOM 渲染
+			const webglMod = await import("@xterm/addon-webgl");
+			const { WebglAddon } = webglMod;
+			try {
+				term.loadAddon(new WebglAddon());
+			} catch {
+				console.warn("WebGL 渲染不可用，终端回退 DOM 渲染");
+			}
 			term.open(container);
 			fit.fit();
 			termRef.current = term;
