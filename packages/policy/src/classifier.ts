@@ -7,9 +7,14 @@ import type { Verdict } from "./types";
 
 /**
  * 读命令白名单：支持裸命令（ls / df / ps…）与带参数两种形态，
- * 用「命令 + 空白或结尾」匹配，避免裸命令被误判为写操作
+ * 用「命令 + 空白或结尾」匹配，避免裸命令被误判为写操作。
+ * `command -v` 为远程工具探测专用（只读、固定命令，见 docs 发行版适配计划），
+ * 仅放行精确的 `command -v` 形态，避免 `command curl -o` 之类借壳绕过。
  */
-const READ_COMMANDS = [/^(?:ls|cat|grep|head|tail|df|free|ps|top|pwd)(?:\s|$)/];
+const READ_COMMANDS = [
+	/^(?:ls|cat|grep|head|tail|df|free|ps|top|pwd)(?:\s|$)/,
+	/^command\s+-v(?:\s|$)/,
+];
 
 /** 从 SFn 入参提取命令文本：优先 command 字段，避免整包 JSON 导致锚定正则失效 */
 function extractCommand(data: unknown): string {

@@ -45,8 +45,11 @@ export const baseRules: Rule[] = [
 		level: "review",
 		description: "service stop",
 	},
+	// 包管理器写操作：词边界锚定避免 capture/chapter/aptitude 等误命中；
+	// 覆盖 Debian(apt) / RHEL(yum/dnf) / Arch(pacman) / Alpine(apk) / openSUSE(zypper) /
+	// Gentoo(emerge) / 通用应用源(snap/flatpak)。发行版 Profile 定稿后按语义规则替代（docs 计划）
 	{
-		pattern: /apt|yum|dnf|pacman/,
+		pattern: /\b(?:apt|yum|dnf|pacman|apk|zypper|emerge|snap|flatpak)\b/,
 		level: "review",
 		description: "package manager",
 	},

