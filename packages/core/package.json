@@ -9,7 +9,8 @@
     "./ssh-manager": "./src/ssh-manager.ts",
     "./pty-manager": "./src/pty-manager.ts",
     "./sftp-manager": "./src/sftp-manager.ts",
-    "./metrics-collector": "./src/metrics-collector.ts"
+    "./metrics-collector": "./src/metrics-collector.ts",
+    "./distro-profile": "./src/distro-profile.ts"
   },
   "scripts": {
     "test": "vitest run",

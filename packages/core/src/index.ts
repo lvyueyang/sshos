@@ -3,6 +3,25 @@
  */
 
 export {
+	buildDistroProfile,
+	type CoreutilsFlavor,
+	clearAllDistroProfiles,
+	clearDistroProfile,
+	DISTRO_PROBE_CMD,
+	type DistroExecutor,
+	type DistroFamily,
+	type DistroProbeResult,
+	type DistroProfile,
+	detectRemoteDistro,
+	getCachedDistroProfile,
+	getOrDetectDistroProfile,
+	type InitSystem,
+	type PackageManager,
+	parseDistroProbe,
+	parseOsRelease,
+	splitDistroProbe,
+} from "./distro-profile";
+export {
 	type CpuSample,
 	computeCpuUsage,
 	computeNetRates,
