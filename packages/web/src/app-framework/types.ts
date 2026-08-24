@@ -31,6 +31,23 @@ export interface ContextMenuContribution {
 	when?: string;
 }
 
+/**
+ * App 远程工具依赖：探测远程可用性并驱动 UI 适配（gate/hint/fallback）与安装引导
+ * （docs 发行版适配计划）。探测走固定只读命令，工具名必须符合白名单字符集。
+ */
+export interface RemoteToolRequirement {
+	/** 工具标识，也是默认探测目标（command -v <id>） */
+	id: string;
+	/** 展示名（i18n key 或字面量） */
+	label: string;
+	/** 依赖此工具的功能 id */
+	neededFor: string[];
+	/** 无此工具时的降级行为说明（UI hint） */
+	fallback?: string;
+	/** true=仅增强体验，缺失仅隐藏/降级；false=核心依赖，缺失触发安装引导（默认 false） */
+	optional?: boolean;
+}
+
 /** 三种放置形态 */
 export type AppSurface =
 	| { kind: "window"; defaultSize?: { w: number; h: number } }
@@ -46,6 +63,8 @@ export interface AppManifest {
 	/** window 是否单实例（默认 false，可多开） */
 	singleton?: boolean;
 	surfaces: AppSurface[];
+	/** 远程工具依赖声明：探测可用性并驱动 UI 适配 / 安装引导 */
+	remoteRequirements?: RemoteToolRequirement[];
 	contributes?: {
 		contextMenus?: ContextMenuContribution[];
 	};

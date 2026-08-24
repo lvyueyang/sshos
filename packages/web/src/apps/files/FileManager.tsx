@@ -11,11 +11,13 @@ import {
 	approvalSFn,
 	listPendingApprovalsSFn,
 } from "#/approval/approval.functions";
+import { AppCapabilities } from "#/components/AppCapabilities";
 import {
 	ApprovalDialog,
 	type PendingApproval,
 } from "#/components/ApprovalDialog";
 import { apiFetch, authHeaders } from "#/lib/api-fetch";
+import { manifest } from "./app";
 import {
 	FileManagerMenu,
 	type MenuAction,
@@ -188,6 +190,12 @@ export function FileManager({ sessionId }: FileManagerProps) {
 					</span>
 				)}
 			</div>
+
+			{/* 远程能力状态条：探测 rsync/zip/unzip/tar，缺失时提供安装引导 */}
+			<AppCapabilities
+				sessionId={sessionId}
+				requirements={manifest.remoteRequirements ?? []}
+			/>
 
 			{/* 路径栏 */}
 			<div className="shrink-0 px-2 py-1">

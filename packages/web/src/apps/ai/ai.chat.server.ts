@@ -9,7 +9,7 @@ import { type AgentTools, createPiAgent } from "#/ai/pi-agent";
 import { logger } from "#/lib/logger";
 import { guardChatInput } from "#/middleware/prompt-guard";
 import { ensureSftp, sftpManager } from "#/services/sftp/sftp.server";
-import { execWithPolicy } from "./exec.service";
+import { execWithPolicy } from "#/services/ssh/exec.service";
 
 /** 对话消息（role 仅 user / assistant，system 由 guardChatInput 拒绝） */
 export interface AiChatMessage {

@@ -8,11 +8,13 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import {
 	type ConnectionOptions,
+	clearDistroProfile,
 	PtyManager,
 	SshManager,
 	type SshSession,
 } from "@sshos/core";
 import { approvalRegistry } from "#/approval/registry";
+import { clearToolCache } from "#/services/capabilities/cache";
 import { decryptCredential, getConnection } from "../settings/settings.server";
 
 export const sshManager = new SshManager();
@@ -147,10 +149,12 @@ export async function connectSession(
 	return session;
 }
 
-/** 断开连接并清理（同步清空该会话的审批挂起项，docs 技术架构 §7.3） */
+/** 断开连接并清理（同步清空该会话的审批挂起项，docs 技术架构 §7.3；同时清理发行版 Profile / 工具探测缓存） */
 export function disconnectSession(sessionId: string): void {
 	sshManager.disconnect(sessionId);
 	approvalRegistry.clearBySession(sessionId);
+	clearDistroProfile(sessionId);
+	clearToolCache(sessionId);
 }
 
 /** 按会话查询是否生产环境（策略引擎用，服务端权威来源） */

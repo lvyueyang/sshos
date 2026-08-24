@@ -1,8 +1,8 @@
 /**
- * 命令执行服务（AI 工具与 execCommandSFn 共用，docs 技术架构 §7）：
+ * 命令执行服务（AI 工具、execCommandSFn、安装引导共用，docs 技术架构 §7）：
  * 策略检查（classifyCommand）→ 审计 → block 抛错 / review 登记审批并抛
- * ApprovalRequiredError / safe 执行。AI 工具在此直接调用，绕过 SFn 服务端调用
- * （execCommandSFn 未在 server manifest 注册时，服务端调用 SFn 会 fnId 查找失败）。
+ * ApprovalRequiredError / safe 执行。AI 工具与安装引导在此直接调用，绕过 SFn
+ * 服务端调用（execCommandSFn 未在 server manifest 注册时，服务端调用 SFn 会 fnId 查找失败）。
  */
 
 import { classifyCommand } from "@sshos/policy";

@@ -16,6 +16,7 @@ import {
 	type PendingApproval,
 } from "#/components/ApprovalDialog";
 import { apiFetch } from "#/lib/api-fetch";
+import { useUiStore } from "#/stores/ui";
 
 interface AiPanelProps {
 	sessionId: string;
@@ -31,6 +32,16 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [approval, setApproval] = useState<PendingApproval | null>(null);
+
+	// 安装引导的「AI 对话式安装」：消费一次性预填提示（信号变化时读取，匹配本会话才预填）
+	const aiInstallSignal = useUiStore((s) => s.aiInstallSignal);
+	useEffect(() => {
+		if (aiInstallSignal === 0) return;
+		const prompt = useUiStore.getState().consumeAiInstall(sessionId);
+		if (prompt) {
+			setInput(prompt.prompt);
+		}
+	}, [aiInstallSignal, sessionId]);
 
 	// 轮询挂起审批：AI 命令被 review 拦截后弹窗确认
 	useEffect(() => {

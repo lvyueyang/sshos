@@ -11,7 +11,7 @@ import { execCommandSchema } from "./ai.schemas";
 export const execCommandSFn = createServerFn({ method: "POST" })
 	.validator(execCommandSchema)
 	.handler(async ({ data }) => {
-		const { execWithPolicy } = await import("./exec.service");
+		const { execWithPolicy } = await import("#/services/ssh/exec.service");
 		const stdout = await execWithPolicy(data.sessionId, data.command);
 		return { stdout };
 	});

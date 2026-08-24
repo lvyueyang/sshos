@@ -16,6 +16,8 @@
 	--accent2: #0969da;
 	--warn: #9a6700;
 	--danger: #cf222e;
+	--ok: #1a7f37;
+	--ok-bg: #dcf4e0;
 
 	--background: var(--bg);
 	--foreground: var(--ink);
@@ -36,6 +38,8 @@
 	--accent2: #58a6ff;
 	--warn: #d29922;
 	--danger: #f85149;
+	--ok: #3fb950;
+	--ok-bg: #12281a;
 
 	--background: var(--bg);
 	--foreground: var(--ink);

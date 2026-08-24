@@ -18,6 +18,37 @@ export const manifest: AppManifest = {
 	// 单实例（docs 技术架构 §6.5：仅 terminal 可多开）
 	singleton: true,
 	surfaces: [{ kind: "window", defaultSize: { w: 760, h: 520 } }],
+	// 远程工具依赖：全部增强型（缺失仅降级/提示，不阻塞核心功能）
+	remoteRequirements: [
+		{
+			id: "rsync",
+			label: "rsync",
+			neededFor: ["同步到本地"],
+			fallback: "缺少 rsync，将回退纯 SFTP 传输",
+			optional: true,
+		},
+		{
+			id: "zip",
+			label: "zip",
+			neededFor: ["压缩为 .zip"],
+			fallback: "缺少 zip，压缩功能不可用",
+			optional: true,
+		},
+		{
+			id: "unzip",
+			label: "unzip",
+			neededFor: ["解压 .zip"],
+			fallback: "缺少 unzip，解压功能不可用",
+			optional: true,
+		},
+		{
+			id: "tar",
+			label: "tar",
+			neededFor: ["打包 / 解包 .tar.gz"],
+			fallback: "缺少 tar，打包功能不可用",
+			optional: true,
+		},
+	],
 };
 
 export function setup(_ctx: AppContext) {
