@@ -1,0 +1,37 @@
+# 开发测试机矩阵（docs 04-决策记录 测试矩阵）
+# 三个发行版各一个 SSH 容器，统一用户 test / testpass，端口 2222/2223/2224。
+# 启动：docker compose -f dev/docker/docker-compose.yml up -d --build
+# 集成测试：SSH_TEST_HOST=localhost SSH_TEST_PORT=<port> SSH_TEST_USER=test \
+#           SSH_TEST_PASSWORD=testpass SSH_TEST_DISTRO=<distro> pnpm --filter @sshos/core test
+services:
+  # Alpine：busybox + OpenRC + apk（沿用 linuxserver/openssh-server 镜像，无需自建）
+  sshos-test:
+    image: linuxserver/openssh-server
+    container_name: sshos-test
+    environment:
+      PASSWORD_ACCESS: "true"
+      USER_NAME: test
+      USER_PASSWORD: testpass
+    ports:
+      - "2222:2222"
+    restart: unless-stopped
+
+  # Debian：GNU coreutils + systemd + apt
+  sshos-test-debian:
+    build:
+      context: .
+      dockerfile: Dockerfile.debian
+    container_name: sshos-test-debian
+    ports:
+      - "2223:22"
+    restart: unless-stopped
+
+  # Rocky Linux：GNU coreutils + systemd + dnf
+  sshos-test-rocky:
+    build:
+      context: .
+      dockerfile: Dockerfile.rocky
+    container_name: sshos-test-rocky
+    ports:
+      - "2224:22"
+    restart: unless-stopped

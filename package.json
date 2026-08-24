@@ -14,7 +14,9 @@
     "test": "pnpm -r --parallel test",
     "build": "pnpm --filter @sshos/web build",
     "dist": "pnpm --filter @sshos/desktop dist",
-    "dist:pack": "pnpm --filter @sshos/desktop pack:dir"
+    "dist:pack": "pnpm --filter @sshos/desktop pack:dir",
+    "test:containers:up": "docker compose -f dev/docker/docker-compose.yml up -d --build",
+    "test:containers:down": "docker compose -f dev/docker/docker-compose.yml down"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.7",

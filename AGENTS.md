@@ -4,7 +4,20 @@
 
 SSH 可视化终端管理工具（代号 ssh-os）：以**纯 SSH 协议、零 agent** 把远程 Linux 的文件、进程、软件、Docker 以桌面隐喻可视化呈现，用户像操作本地电脑一样操作远程服务器，AI 作为"第二消费者"接入同一套读写网关。桌面外壳范式：一个 SSH 连接 = 一个 OS 桌面 Tab。
 
-**当前阶段**：P0-P3 已落地（脚手架 / SSH 引擎 / 策略分类器 / web 基座），W0 spike 完成（PTY / metrics 流实测首包 2-3ms，Pi SDK 0.84.2 API 定稿）；Docker 测试机（`linuxserver/openssh-server` 端口 2222）就绪，SSH 集成测试经 `SSH_TEST_HOST/PORT/USER/PASSWORD` 环境变量接入。修改实现前先读设计文档；文档与实现冲突时以决策记录（`docs/04-决策记录.md`）为单一事实来源。
+**当前阶段**：P0-P3 已落地（脚手架 / SSH 引擎 / 策略分类器 / web 基座），W0 spike 完成（PTY / metrics 流实测首包 2-3ms，Pi SDK 0.84.2 API 定稿）；D20 发行版适配已落地（core 发行版 Profile + App 远程能力探测 + 缺失依赖安装引导，见「发行版适配」小节）。修改实现前先读设计文档；文档与实现冲突时以决策记录（`docs/04-决策记录.md`）为单一事实来源。
+
+## 开发测试环境
+
+| 容器 | 镜像 | 发行版 | 端口 |
+|---|---|---|---|
+| `sshos-test` | `linuxserver/openssh-server` | Alpine（apk + busybox + OpenRC） | `localhost:2222` |
+| `sshos-test-debian` | `dev/docker/Dockerfile.debian` | Debian 12（apt + GNU） | `localhost:2223` |
+| `sshos-test-rocky` | `dev/docker/Dockerfile.rocky` | Rocky 9（dnf + GNU + systemd） | `localhost:2224` |
+
+统一账号：用户名 `test` / 密码 `testpass`（**仅限开发环境中 AI 进行测试/调试**，不得作为对外演示或联调凭据）。
+
+- 启动/停止：`docker compose -f dev/docker/docker-compose.yml up -d --build` / `down`
+- 集成测试按发行版设 `SSH_TEST_DISTRO=alpine|debian|rocky`（见 `CONTRIBUTING.md`）
 
 ## 工程结构
 
@@ -116,6 +129,16 @@ ssh-os/
   - 处理器动作走 SFn，写操作自动过 Policy Engine，无绕过路径
   - 注册返回 Disposable，随 app 启停回收
 
+## 发行版适配（D20）
+
+对不同 Linux 发行版 / 镜像做三层适配（详见 `docs/04-决策记录.md` D20 与 `docs/02-技术架构.md` §6.7）：
+
+1. **发行版 Profile（core）**：连接后按回退链（`/etc/os-release` → `/etc/redhat-release` → `/etc/debian_version` → `lsb_release` → `uname`）探测一次，产出 `{ id, family, packageManager, initSystem, coreutils }`，随会话缓存、断开清理；经 `getSessionProfileSFn` 暴露
+2. **App 远程能力探测**：`AppManifest.remoteRequirements` 声明远程工具依赖；`probeToolsSFn` 固定只读命令 `command -v` 批量探测（工具名白名单校验），按会话缓存 TTL 60s；UI 走 `useRemoteTools` + `AppCapabilities`（gate/hint/fallback）
+3. **缺失依赖安装引导**：`InstallGuide` 三路径——**一键安装**（`install-knowledge.ts` 按包管理器生成命令 → `execWithPolicy` → 包管理器写操作 review 审批，无绕过路径）、**手动安装**（可复制命令/源码步骤）、**AI 对话式安装**（预填 prompt 唤起 AI 面板）
+
+约定：探测 / 发行版识别命令为**服务端固定只读**，走直接 exec（不经策略分类，与 metrics 采样一致）；`command -v` 精确形态在只读白名单；包管理器 review 规则带词边界并覆盖 `apt|yum|dnf|pacman|apk|zypper|emerge|snap|flatpak`；服务管理规则按 Profile `initSystem` 派生。`execWithPolicy` 位于 `services/ssh/exec.service.ts`（AI 工具 / execCommandSFn / 安装引导共用）。
+
 ## 数据库
 
 - `node:sqlite`（`DatabaseSync`）+ `drizzle-orm/node-sqlite` 适配器，零原生依赖
@@ -163,6 +186,7 @@ ssh-os/
 | `pnpm format` | 全部包 Biome 格式化 |
 | `pnpm test` | 全部包单元测试（SSH 集成测试设 `SSH_TEST_HOST` 后启用） |
 | `pnpm build` | 生产构建（web 的 Nitro 产物 `.output/server/index.mjs`） |
+| `pnpm test:containers:up` / `down` | 开发测试机矩阵启停（`dev/docker/docker-compose.yml`，见「开发测试环境」） |
 
 ## 开发边界
 

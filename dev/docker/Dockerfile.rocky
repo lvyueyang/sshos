@@ -1,0 +1,22 @@
+# 开发测试机：Rocky Linux 9（GNU coreutils + systemd + dnf）
+# 与 docker-compose.yml 配套，统一测试用户 test / testpass。
+FROM rockylinux:9
+
+# 安装 openssh-server，清理 dnf 缓存以控制镜像体积
+RUN dnf install -y openssh-server \
+    && dnf clean all
+
+# 生成缺失的主机密钥（rocky 官方镜像不会预生成）
+RUN ssh-keygen -A
+
+# 创建统一测试用户（test / testpass），禁止 root 登录
+RUN useradd -m -s /bin/bash test \
+    && echo "test:testpass" | chpasswd
+
+# 开启密码认证、关闭 root 登录
+RUN sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config \
+    && sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+
+EXPOSE 22
+
+CMD ["/usr/sbin/sshd", "-D", "-e"]

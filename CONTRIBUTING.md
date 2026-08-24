@@ -39,15 +39,30 @@ pnpm build      # web 生产构建（Nitro 产物）
 
 ## SSH 集成测试
 
-core 包的 SSH 集成测试默认跳过，设置以下环境变量后启用（连接 Docker 测试机）：
+core 包的 SSH 集成测试默认跳过，设置以下环境变量后启用。多发行版测试机由 `dev/docker/docker-compose.yml` 统一管理（Alpine `localhost:2222` / Debian `localhost:2223` / Rocky `localhost:2224`，统一账号 `test` / `testpass`）：
 
 ```bash
-docker run -d --name sshos-test -e PASSWORD_ACCESS=true \
-  -e USER_NAME=test -e USER_PASSWORD=testpass -p 2222:2222 \
-  linuxserver/openssh-server
+# 启动测试机矩阵（首次构建需拉取镜像；可用 pnpm test:containers:up）
+docker compose -f dev/docker/docker-compose.yml up -d --build
+
+# Alpine（默认发行版，不设 SSH_TEST_DISTRO 即 alpine）
 SSH_TEST_HOST=localhost SSH_TEST_PORT=2222 SSH_TEST_USER=test \
 SSH_TEST_PASSWORD=testpass pnpm test
+
+# Debian / Rocky（按发行版设 SSH_TEST_DISTRO）
+SSH_TEST_HOST=localhost SSH_TEST_PORT=2223 SSH_TEST_USER=test \
+SSH_TEST_PASSWORD=testpass SSH_TEST_DISTRO=debian \
+pnpm --filter @sshos/core test
+
+SSH_TEST_HOST=localhost SSH_TEST_PORT=2224 SSH_TEST_USER=test \
+SSH_TEST_PASSWORD=testpass SSH_TEST_DISTRO=rocky \
+pnpm --filter @sshos/core test
+
+# 停止矩阵（可用 pnpm test:containers:down）
+docker compose -f dev/docker/docker-compose.yml down
 ```
+
+> 说明：本机 Docker 若配置了 `credsStore: osxkeychain` 且拉取公开镜像时凭据助手被取消（`error getting credentials`），可用最小配置跳过：`DOCKER_CONFIG=.tmp/docker-config docker compose -f dev/docker/docker-compose.yml up -d --build`（详见 `dev/docker/README.md`）。
 
 ## 提交 Pull Request
 
