@@ -1,7 +1,8 @@
 /**
  * 统一 API 请求工具（决策记录 D21）：
- * 渲染层手动 fetch Server Route（pty/metrics/ai.chat/sftp）时统一注入
+ * 渲染层手动 fetch Server Route（sftp 上传/下载）时统一注入
  * X-SSHOS-TOKEN 鉴权头；token 由登录 / setup 写入 localStorage（lib/auth-client）。
+ * 业务流式（PTY / metrics / AI 对话）已迁移为 SFn（ptyStreamSFn / metricsStreamSFn / aiChatSFn）。
  */
 
 import { getAuthToken } from "./auth-client";

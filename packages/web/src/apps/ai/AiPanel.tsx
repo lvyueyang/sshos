@@ -1,12 +1,12 @@
 /**
- * AI 助手面板（docs 界面设计 §5 / W3）：手动消费 aiChatSFn 的 SSE 流（text-delta 帧），
- * 自己维护消息列表与流式渲染。工具调用在服务端执行（命令经 Policy Engine）；
- * review 级命令在服务端挂起审批，面板轮询 listPendingApprovalsSFn 弹出审批弹窗，
- * 批准后 approvalSFn 重放执行（无绕过路径）。
+ * AI 助手面板（docs 界面设计 §5 / W3）：消费 aiChatSFn 的 AiTextDelta 增量流
+ * （SFn 流式返回，逐块读取），自己维护消息列表与流式渲染。工具调用在服务端执行
+ * （命令经 Policy Engine）；review 级命令在服务端挂起审批，面板轮询
+ * listPendingApprovalsSFn 弹出审批弹窗，批准后 approvalSFn 重放执行（无绕过路径）。
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	approvalSFn,
 	listPendingApprovalsSFn,
@@ -15,9 +15,9 @@ import {
 	ApprovalDialog,
 	type PendingApproval,
 } from "#/components/ApprovalDialog";
-import { apiFetch } from "#/lib/api-fetch";
 import { useUiStore } from "#/stores/ui";
 import { AuditHistoryPanel } from "./AuditHistoryPanel";
+import { aiChatSFn } from "./ai.functions";
 
 interface AiPanelProps {
 	sessionId: string;
@@ -35,6 +35,9 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 	const [approval, setApproval] = useState<PendingApproval | null>(null);
 	const [showHistory, setShowHistory] = useState(false);
 	const queryClient = useQueryClient();
+	// 对话流取消：AI 窗口关闭（组件卸载）时中止进行中的请求与流读取
+	const abortRef = useRef<AbortController | null>(null);
+	useEffect(() => () => abortRef.current?.abort(), []);
 
 	// 安装引导的「AI 对话式安装」：消费一次性预填提示（信号变化时读取，匹配本会话才预填）
 	const aiInstallSignal = useUiStore((s) => s.aiInstallSignal);
@@ -94,17 +97,17 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 		const history = [...messages, { role: "user" as const, content: text }];
 		setMessages([...history, { role: "assistant", content: "" }]);
 		setLoading(true);
+		const controller = new AbortController();
+		abortRef.current = controller;
 		try {
-			const res = await apiFetch("/api/ai/chat", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ sessionId, messages: history }),
+			const stream = await aiChatSFn({
+				data: { sessionId, messages: history },
+				signal: controller.signal,
 			});
-			if (!res.ok || !res.body) {
-				throw new Error(`AI 服务不可用 (${res.status})`);
-			}
-			await consumeSse(res.body, appendAssistantDelta);
+			await consumeDeltaStream(stream, appendAssistantDelta, controller.signal);
 		} catch (err) {
+			// 窗口关闭主动取消：静默结束，不展示错误
+			if ((err as Error).name === "AbortError") return;
 			const msg = err instanceof Error ? err.message : String(err);
 			setMessages((prev) => [
 				...prev.slice(0, -1),
@@ -112,6 +115,7 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 			]);
 		} finally {
 			setLoading(false);
+			if (abortRef.current === controller) abortRef.current = null;
 		}
 	};
 
@@ -202,34 +206,16 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 	);
 }
 
-/** 解析 aiChatSFn 的 SSE body（data: JSON 帧，type=text-delta），逐段回调增量文本 */
-async function consumeSse(
-	body: ReadableStream<Uint8Array>,
+/** 消费 aiChatSFn 的 AiTextDelta 增量流（typed stream），逐块回调增量文本 */
+async function consumeDeltaStream(
+	stream: ReadableStream<{ type: "text-delta"; delta: string }>,
 	onDelta: (delta: string) => void,
+	signal: AbortSignal,
 ): Promise<void> {
-	const reader = body.getReader();
-	const decoder = new TextDecoder();
-	let buffer = "";
+	const reader = stream.getReader();
 	for (;;) {
 		const { done, value } = await reader.read();
-		if (done) break;
-		buffer += decoder.decode(value, { stream: true });
-		const events = buffer.split("\n\n");
-		buffer = events.pop() ?? "";
-		for (const event of events) {
-			for (const line of event.split("\n")) {
-				if (!line.startsWith("data:")) continue;
-				const raw = line.slice(5).trim();
-				if (!raw) continue;
-				try {
-					const data = JSON.parse(raw) as { type?: string; delta?: string };
-					if (data.type === "text-delta" && data.delta) {
-						onDelta(data.delta);
-					}
-				} catch {
-					// 跳过半截 JSON（流式边界）
-				}
-			}
-		}
+		if (done || signal.aborted) break;
+		if (value?.type === "text-delta" && value.delta) onDelta(value.delta);
 	}
 }

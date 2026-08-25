@@ -16,6 +16,7 @@ import {
 	connectSchema,
 	createPtySchema,
 	disconnectSchema,
+	ptyStreamSchema,
 	resizePtySchema,
 	sendInputSchema,
 } from "./terminal.schemas";
@@ -67,6 +68,17 @@ export const closePtySFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		ptyManager.destroy(data.ptyId);
 		return { ok: true };
+	});
+
+/** PTY 输出流：返回文本 ReadableStream，客户端逐块解码（SFn 流式） */
+export const ptyStreamSFn = createServerFn({ method: "GET" })
+	.validator(ptyStreamSchema)
+	.handler(async ({ data }) => {
+		const { Readable } = await import("node:stream");
+		// 单终端 spike：取该会话当前 pty；多终端时客户端传 ptyId 精确订阅
+		const pty = ptyManager.getBySession(data.sessionId);
+		if (!pty) throw new Error("PTY 会话不存在");
+		return Readable.toWeb(pty.output) as ReadableStream<Uint8Array>;
 	});
 
 /** 断开 SSH 连接 */

@@ -83,12 +83,12 @@ ssh-os/
 - 每个 SFn 用 `.validator(z)`（或 `.inputValidator`）做入参校验，禁止裸函数校验
 - 调用方通过 `{ data: ... }` 传参
 
-> **Server Route 例外**：流式/下载/health 路由（`routes/api/*.tsx`）允许通过 `server.handlers` 直接写服务端 handler 并引用 `.server.ts`，与 SFn 是两套并存范式。
+> **Server Route 例外**：下载/上传/health 路由（`routes/api/*.tsx`）允许通过 `server.handlers` 直接写服务端 handler 并引用 `.server.ts`，与 SFn 是两套并存范式。
 
 **流式约束**：
 
-- SFn 返回值经 `startSerializer` 序列化，**async generator / 裸 ReadableStream 无法流式返回**；流式一律走 Server Route（handler 返回 `new Response(ReadableStream)`）
-- 若 SFn handler 必须返回 `Response`（如 AI 对话 SSE），SFn 必须声明 `response: 'raw'`，否则被序列化吞掉
+- SFn 支持流式返回（决策记录 D21 实测）：handler 返回 `ReadableStream<T>` / async generator，客户端逐块 / `for await` 消费；流式接口优先用 SFn（统一鉴权 + 类型安全）
+- 需原生 `Response` 透传（文件上传/下载）时走 Server Route；SFn handler 返回 `Response` 会被序列化层吞掉（禁止此形态）
 
 ### 策略引擎与审批
 

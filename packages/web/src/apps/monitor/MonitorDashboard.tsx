@@ -1,5 +1,5 @@
 /**
- * 系统监控仪表盘（docs 界面设计 §7 / W2）：消费 /api/metrics/:sessionId 快照流，
+ * 系统监控仪表盘（docs 界面设计 §7 / W2）：消费 metricsStreamSFn 快照流（SFn 流式），
  * 展示 CPU / 内存 / 磁盘 / 网络实时指标与最近 30 点趋势折线（SVG）。
  * 流式数据仅组件内消费，不进全局 store（决策记录 D10），复用 useMetricsStream hook。
  */

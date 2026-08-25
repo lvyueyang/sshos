@@ -36,6 +36,11 @@ export const closePtySchema = z.object({
 	ptyId: z.string().min(1),
 });
 
+/** 订阅 PTY 输出流（SFn 流式返回 ReadableStream） */
+export const ptyStreamSchema = z.object({
+	sessionId: z.string().min(1),
+});
+
 /** 断开 SSH 连接 */
 export const disconnectSchema = z.object({
 	sessionId: z.string().min(1),

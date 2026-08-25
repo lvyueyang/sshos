@@ -11,9 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as ApiAiChatRouteImport } from './routes/api/ai.chat'
-import { Route as ApiMetricsSessionIdRouteImport } from './routes/api/metrics.$sessionId'
-import { Route as ApiPtySessionIdRouteImport } from './routes/api/pty.$sessionId'
 import { Route as ApiSftpDownloadRouteImport } from './routes/api/sftp/download'
 import { Route as ApiSftpUploadRouteImport } from './routes/api/sftp/upload'
 
@@ -25,21 +22,6 @@ const IndexRoute = IndexRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAiChatRoute = ApiAiChatRouteImport.update({
-  id: '/api/ai/chat',
-  path: '/api/ai/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiMetricsSessionIdRoute = ApiMetricsSessionIdRouteImport.update({
-  id: '/api/metrics/$sessionId',
-  path: '/api/metrics/$sessionId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPtySessionIdRoute = ApiPtySessionIdRouteImport.update({
-  id: '/api/pty/$sessionId',
-  path: '/api/pty/$sessionId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSftpDownloadRoute = ApiSftpDownloadRouteImport.update({
@@ -56,18 +38,12 @@ const ApiSftpUploadRoute = ApiSftpUploadRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/ai/chat': typeof ApiAiChatRoute
-  '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
-  '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
   '/api/sftp/download': typeof ApiSftpDownloadRoute
   '/api/sftp/upload': typeof ApiSftpUploadRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/ai/chat': typeof ApiAiChatRoute
-  '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
-  '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
   '/api/sftp/download': typeof ApiSftpDownloadRoute
   '/api/sftp/upload': typeof ApiSftpUploadRoute
 }
@@ -75,48 +51,21 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/ai/chat': typeof ApiAiChatRoute
-  '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
-  '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
   '/api/sftp/download': typeof ApiSftpDownloadRoute
   '/api/sftp/upload': typeof ApiSftpUploadRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/api/health'
-    | '/api/ai/chat'
-    | '/api/metrics/$sessionId'
-    | '/api/pty/$sessionId'
-    | '/api/sftp/download'
-    | '/api/sftp/upload'
+  fullPaths: '/' | '/api/health' | '/api/sftp/download' | '/api/sftp/upload'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/api/health'
-    | '/api/ai/chat'
-    | '/api/metrics/$sessionId'
-    | '/api/pty/$sessionId'
-    | '/api/sftp/download'
-    | '/api/sftp/upload'
+  to: '/' | '/api/health' | '/api/sftp/download' | '/api/sftp/upload'
   id:
-    | '__root__'
-    | '/'
-    | '/api/health'
-    | '/api/ai/chat'
-    | '/api/metrics/$sessionId'
-    | '/api/pty/$sessionId'
-    | '/api/sftp/download'
-    | '/api/sftp/upload'
+    '__root__' | '/' | '/api/health' | '/api/sftp/download' | '/api/sftp/upload'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiHealthRoute: typeof ApiHealthRoute
-  ApiAiChatRoute: typeof ApiAiChatRoute
-  ApiMetricsSessionIdRoute: typeof ApiMetricsSessionIdRoute
-  ApiPtySessionIdRoute: typeof ApiPtySessionIdRoute
   ApiSftpDownloadRoute: typeof ApiSftpDownloadRoute
   ApiSftpUploadRoute: typeof ApiSftpUploadRoute
 }
@@ -135,27 +84,6 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/ai/chat': {
-      id: '/api/ai/chat'
-      path: '/api/ai/chat'
-      fullPath: '/api/ai/chat'
-      preLoaderRoute: typeof ApiAiChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/metrics/$sessionId': {
-      id: '/api/metrics/$sessionId'
-      path: '/api/metrics/$sessionId'
-      fullPath: '/api/metrics/$sessionId'
-      preLoaderRoute: typeof ApiMetricsSessionIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/pty/$sessionId': {
-      id: '/api/pty/$sessionId'
-      path: '/api/pty/$sessionId'
-      fullPath: '/api/pty/$sessionId'
-      preLoaderRoute: typeof ApiPtySessionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/sftp/download': {
@@ -178,9 +106,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiHealthRoute: ApiHealthRoute,
-  ApiAiChatRoute: ApiAiChatRoute,
-  ApiMetricsSessionIdRoute: ApiMetricsSessionIdRoute,
-  ApiPtySessionIdRoute: ApiPtySessionIdRoute,
   ApiSftpDownloadRoute: ApiSftpDownloadRoute,
   ApiSftpUploadRoute: ApiSftpUploadRoute,
 }

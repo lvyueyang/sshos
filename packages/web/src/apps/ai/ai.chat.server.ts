@@ -1,8 +1,9 @@
 /**
- * AI 对话服务端逻辑（Server Route 例外，docs 技术架构 §5.2 / §8）：
- * guardChatInput 注入检测 → Pi Agent 会话 → 事件流转 SSE（text-delta 帧）。
+ * AI 对话服务端逻辑（SFn 流式，docs 技术架构 §5.2 / §8）：
+ * guardChatInput 注入检测 → Pi Agent 会话 → 事件流转 AiTextDelta 增量流
+ * （SFn 返回 ReadableStream，客户端逐块消费）。
  * 工具 handler 内部走 execCommandSFn（命令经 Policy Engine 二次拦截，无绕过路径）。
- * 纯服务端模块，由 routes/api/ai.chat.tsx 动态 import，避免进入 client bundle。
+ * 纯服务端模块，由 aiChatSFn 动态 import，避免进入 client bundle。
  */
 
 import { type AgentTools, createPiAgent } from "#/ai/pi-agent";
@@ -17,11 +18,17 @@ export interface AiChatMessage {
 	content: string;
 }
 
-/** 构造 AI 对话 SSE 响应：注入检测 → Pi 生成 → text-delta 流 */
-export async function createAiChatResponse(
+/** AI 增量文本帧（SFn 流式 chunk，客户端逐块消费） */
+export interface AiTextDelta {
+	type: "text-delta";
+	delta: string;
+}
+
+/** 构造 AI 对话增量流（SFn 流式）：注入检测 → Pi 生成 → AiTextDelta 流 */
+export async function createAiChatStream(
 	sessionId: string,
 	messages: AiChatMessage[],
-): Promise<Response> {
+): Promise<ReadableStream<AiTextDelta>> {
 	guardChatInput(messages);
 
 	const tools: AgentTools = {
@@ -88,27 +95,23 @@ export async function createAiChatResponse(
 		},
 		"Pi agent 已创建",
 	);
-	const encoder = new TextEncoder();
 	// 控制器与关闭标记提升到流外：prompt 失败时也能结束流（否则客户端 loading 卡死）
-	let sseController: ReadableStreamDefaultController<Uint8Array> | null = null;
+	let streamController: ReadableStreamDefaultController<AiTextDelta> | null =
+		null;
 	let closed = false;
-	const closeSse = () => {
+	const closeStream = () => {
 		if (!closed) {
 			closed = true;
-			sseController?.close();
+			streamController?.close();
 		}
 	};
-	const sse = new ReadableStream<Uint8Array>({
+	const stream = new ReadableStream<AiTextDelta>({
 		start(controller) {
-			sseController = controller;
+			streamController = controller;
 			// 部分模型只发 text_end（完整文本），用其兜底；已有 text_delta 增量则跳过避免重复
 			let hasTextDelta = false;
-			const enqueue = (obj: unknown) => {
-				if (!closed) {
-					controller.enqueue(
-						encoder.encode(`data: ${JSON.stringify(obj)}\n\n`),
-					);
-				}
+			const enqueue = (delta: string) => {
+				if (!closed) controller.enqueue({ type: "text-delta", delta });
 			};
 			agent.subscribe((event: { type: string; text?: string }) => {
 				if (event.type !== "message_update") {
@@ -128,18 +131,18 @@ export async function createAiChatResponse(
 					).assistantMessageEvent;
 					if (deltaEvent?.type === "text_delta" && deltaEvent.delta) {
 						hasTextDelta = true;
-						enqueue({ type: "text-delta", delta: deltaEvent.delta });
+						enqueue(deltaEvent.delta);
 					} else if (
 						deltaEvent?.type === "text_end" &&
 						deltaEvent.content &&
 						!hasTextDelta
 					) {
-						enqueue({ type: "text-delta", delta: deltaEvent.content });
+						enqueue(deltaEvent.content);
 					}
 				}
 				// turn_end / agent_end 与失败路径都可能触发，必须防重复 close
 				if (event.type === "turn_end" || event.type === "agent_end") {
-					closeSse();
+					closeStream();
 				}
 			});
 		},
@@ -149,11 +152,9 @@ export async function createAiChatResponse(
 	const promptText = messages.map((m) => m.content).join("\n");
 	void agent.prompt(promptText).catch((err: Error) => {
 		logger.warn({ err }, "Pi prompt 调用失败");
-		// 失败也要结束流，否则客户端 consumeSse 永远等不到 done、loading 卡死
-		closeSse();
+		// 失败也要结束流，否则客户端永远等不到 done、loading 卡死
+		closeStream();
 	});
 
-	return new Response(sse, {
-		headers: { "Content-Type": "text/event-stream" },
-	});
+	return stream;
 }

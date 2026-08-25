@@ -10,3 +10,14 @@ export const execCommandSchema = z.object({
 	sessionId: z.string().min(1),
 	command: z.string().min(1),
 });
+
+/** AI 对话（SFn 流式）：历史消息作为上下文，服务端返回 text-delta 增量流 */
+export const aiChatSchema = z.object({
+	sessionId: z.string().min(1),
+	messages: z.array(
+		z.object({
+			role: z.enum(["user", "assistant"]),
+			content: z.string(),
+		}),
+	),
+});

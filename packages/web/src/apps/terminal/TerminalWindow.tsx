@@ -1,17 +1,17 @@
 /**
- * 终端窗口（docs 界面设计 §5）：基于 xterm.js，通过 Server Route 流消费 PTY 输出，
- * sendInputSFn 发送键盘输入。挂载时创建 PTY channel，卸载时关闭。
+ * 终端窗口（docs 界面设计 §5）：基于 xterm.js，通过 ptyStreamSFn（SFn 流式）消费
+ * PTY 输出，sendInputSFn 发送键盘输入。挂载时创建 PTY channel，卸载时关闭。
  * xterm 为 CJS 且纯 client，组件内动态 import，SSR 不加载（避免模块 interop 问题）。
  */
 
 import type { Terminal as TerminalType } from "@xterm/xterm";
 import { useEffect, useRef, useState } from "react";
-import { apiFetch } from "#/lib/api-fetch";
 import { recordTerminalCommandSFn } from "#/services/logs/logs.functions";
 import { createCommandTracker } from "./command-tracker";
 import {
 	closePtySFn,
 	createPtySFn,
+	ptyStreamSFn,
 	resizePtySFn,
 	sendInputSFn,
 } from "./terminal.functions";
@@ -32,6 +32,7 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 
 		let disposed = false;
 		let abort: AbortController | null = null;
+		let ptyReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 		let fitAddon: { fit(): void } | null = null;
 		let inputDisposable: { dispose(): void } | null = null;
 		let resizeObserver: ResizeObserver | null = null;
@@ -113,17 +114,24 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 				if (disposed) return;
 				ptyIdRef.current = ptyId;
 
-				// 订阅 PTY 输出流（Server Route）
+				// 订阅 PTY 输出流（SFn 流式，逐块解码写入终端）
 				abort = new AbortController();
-				const res = await apiFetch(`/api/pty/${sessionId}`, {
+				const stream = await ptyStreamSFn({
+					data: { sessionId },
 					signal: abort.signal,
 				});
-				if (!res.ok || !res.body) return;
-				const reader = res.body.getReader();
+				// await 期间组件已卸载：请求已发出无法中止，取消返回的流避免服务端残留 pty 推送
+				if (disposed) {
+					void stream?.cancel().catch(() => {});
+					return;
+				}
+				if (!stream) return;
+				ptyReader = stream.getReader();
 				const decoder = new TextDecoder();
 				for (;;) {
-					const { done, value } = await reader.read();
+					const { done, value } = await ptyReader.read();
 					if (done) break;
+					if (disposed) return;
 					const text = decoder.decode(value, { stream: true });
 					// 输出流同时喂给命令追踪器（检测密码提示，抑制密码行落审计）
 					tracker.consumeOutput(text);
@@ -152,6 +160,7 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 		return () => {
 			disposed = true;
 			abort?.abort();
+			void ptyReader?.cancel().catch(() => {});
 			inputDisposable?.dispose();
 			resizeObserver?.disconnect();
 			termRef.current?.dispose();
