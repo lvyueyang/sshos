@@ -8,7 +8,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { beforeAll, describe, expect, it } from "vitest";
-import { decrypt, encrypt } from "../../../db/crypto";
+import {
+	decrypt,
+	encrypt,
+	resetCredentialEncryptor,
+	setCredentialEncryptor,
+} from "../../../db/crypto";
 import { getDbPath, runMigrations } from "../../../db/migrate";
 import * as settings from "../settings.server";
 
@@ -119,22 +124,27 @@ describe("分组管理", () => {
 	});
 });
 
-describe("crypto master key 桥接（D18）", () => {
-	it("注入 SSHOS_MASTER_KEY 后加解密可用，且与降级密钥互不通用", () => {
-		const prev = process.env.SSHOS_MASTER_KEY;
-		let encWithKey = "";
+describe("crypto master key（D21 文件密钥）", () => {
+	it("master.key 文件密钥加解密可用，密文不含明文", () => {
+		const enc = encrypt("file-key-secret");
+		expect(enc).not.toContain("file-key-secret");
+		expect(decrypt(enc)).toBe("file-key-secret");
+	});
+
+	it("setCredentialEncryptor 宿主注入覆盖文件密钥，互不通用", () => {
+		setCredentialEncryptor(
+			(plain) => `host:${Buffer.from(plain, "utf-8").toString("base64")}`,
+			(enc) =>
+				Buffer.from(enc.replace(/^host:/, ""), "base64").toString("utf-8"),
+		);
 		try {
-			process.env.SSHOS_MASTER_KEY = "test-master-key";
-			encWithKey = encrypt("bridge-secret");
-			expect(decrypt(encWithKey)).toBe("bridge-secret");
+			const enc = encrypt("host-secret");
+			expect(decrypt(enc)).toBe("host-secret");
+			// 换回文件密钥后 host 加密器产物无法解密（GCM/格式不匹配抛错）
+			resetCredentialEncryptor();
+			expect(() => decrypt(enc)).toThrow();
 		} finally {
-			if (prev === undefined) {
-				delete process.env.SSHOS_MASTER_KEY;
-			} else {
-				process.env.SSHOS_MASTER_KEY = prev;
-			}
+			resetCredentialEncryptor();
 		}
-		// 换回降级密钥（dev-only-master-key）后 GCM 认证失败，无法解密
-		expect(() => decrypt(encWithKey)).toThrow();
 	});
 });

@@ -43,7 +43,7 @@ ssh-os/
 │   │       ├── ai/               # pi-agent（Pi SDK 封装，工具 handler 依赖注入）
 │   │       ├── services/         # 领域服务层（ssh/sftp/transfer/metrics）
 │   │       └── db/               # node:sqlite + drizzle（index/schema/migrate）
-│   └── desktop/                  # Electron 主进程（main/bootstrap/preload）
+│   └── desktop/                  # Electron 壳（main/bootstrap/updater）
 └── docs/                         # 01 项目概述 / 02 技术架构 / 03 界面设计 / 04 决策记录 / 05 界面框图 / TODO 待办清单
 ```
 
@@ -55,7 +55,7 @@ ssh-os/
 
 | 分类 | 技术 | 说明 |
 |------|------|------|
-| 运行时 | Node.js（Electron 内置） | `node:sqlite` 依赖 Node 22.5+ |
+| 运行时 | Node.js 22.5+ | `node:sqlite` 依赖 Node 22.5+；web 服务可独立启动（`node .output/server/index.mjs`），不依赖 Electron |
 | 语言 | TypeScript v7（原生编译器 tsgo） | 全仓严格类型 |
 | 桌面外壳 | Electron | 自带 Chromium，终端渲染 + 中文输入稳定 |
 | 全栈框架 | TanStack Start（`@tanstack/react-start`） | 文件路由 + SFn + Server Route 流式 |
@@ -118,7 +118,7 @@ ssh-os/
 
 - 路由极简化，只保留 `__root` + `index` + `api/*`；**路由不承载功能页面**
 - 每个 SSH 连接打开一个桌面 Tab（一连接一 Tab）；窗口管理是纯客户端状态（Zustand store），不走服务端
-- 渲染层通信只走 SFn / Server Route，**renderer 永不直连 Electron ipcMain**（未来服务模式的唯一桥梁）
+- 渲染层通信只走 SFn / Server Route，**renderer 永不直连 Electron ipcMain**；Electron 壳（desktop）不注入 token / 主密钥 / JSBridge（决策记录 D21，web 服务自洽）
 - 桌面应用目录 `apps/` 在 `routes/` 平级、不在 routes 内，`routeFileIgnorePattern` 防御性忽略 `.functions/.server/.schemas.ts`
 
 ## 桌面应用与插件框架
@@ -146,7 +146,7 @@ ssh-os/
 - `node:sqlite`（`DatabaseSync`）+ `drizzle-orm/node-sqlite` 适配器，零原生依赖
 - **事务回调必须同步**（同 better-sqlite3）；普通查询经 drizzle 驱动返回 Promise，服务层统一 `await db.select()` 风格
 - `log` 表枚举：`type` = `ai_audit | terminal_command | policy_decision`；`classification` = `safe | review | block`；`action` = `executed | blocked | pending_approval | approved | rejected | user_input`；`result` = `success | failure | timeout`
-- 敏感凭据（密码 / 私钥 / passphrase）加密后入库，**不以明文落盘**；加密走 D18 密钥桥接——Electron main 用 `safeStorage` 保护随机 master key（`userData/master.key`），经 `SSHOS_MASTER_KEY` env 注入 Nitro 子进程派生 AES-256-GCM（见 `packages/desktop/src/secure-key.ts`）；系统密钥（`systemKey`）实时读文件不落库
+- 敏感凭据（密码 / 私钥 / passphrase）加密后入库，**不以明文落盘**；加密走 D21 数据目录主密钥——`{dataDir}/master.key`（setup 时生成 32 字节随机 hex，0600），`db/crypto.ts` 派生 AES-256-GCM，生产缺失 fail-fast；`setCredentialEncryptor` 保留宿主注入点；系统密钥（`systemKey`）实时读文件不落库
 - 迁移走 `drizzle-kit generate` 生成 SQL + bootstrap `runMigrations()` 程序化迁移，失败即启动失败（fail-fast）
 - 连接会话状态（SSH/PTY/SFTP）是内存态、按 `sessionId` 管理、**不持久化**；仅连接配置落 SQLite
 
@@ -260,8 +260,8 @@ ssh-os/
 - **策略引擎挂载边界**：覆盖全部写操作类 SFn（命令执行 + SFTP 变更写操作）；`sendInputSFn` 逐键流不挂策略（见 docs/02 §5.3）
 - **审批无绕过路径**：review 级命令必须经 Approval Registry + `approvalSFn` 重放执行，不存在"直接执行"路径
 - **Prompt 注入隔离**：systemPrompt 代码硬编码，用户消息不得覆盖；`chatSchema` 排除 `system` 角色
-- **全局请求鉴权（D19）**：SFn 与 `/api/*` 端点经 TanStack request 中间件统一校验 `X-SSHOS-TOKEN`（main 注入 `SSHOS_AUTH_TOKEN`）；页面/静态资源/health 豁免；无 token env（纯浏览器 dev:web）不启用；渲染层请求统一经 `lib/api-fetch.ts` / `serverFns.fetch` 携带 token，禁止绕过
-- 凭据经 safeStorage 加密，SSH 密钥永不经过 renderer
+- **全局请求鉴权（D21）**：SFn 与 `/api/*` 端点经 TanStack request 中间件统一校验 `X-SSHOS-TOKEN`（JWT，HS256，与 server.json `serverSecret` 验签）；`/api/auth/*`（setup/login/status）与 `/api/health`、页面/静态资源豁免；未配置启动密码时业务请求一律 401；渲染层请求统一经 `lib/api-fetch.ts` / `serverFns.fetch` 携带 token（存 localStorage，`lib/auth-client.ts`），禁止绕过
+- 凭据经数据目录 master.key 加密，SSH 密钥永不经过 renderer
 
 ## 错误处理与通知
 

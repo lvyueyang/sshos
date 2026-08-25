@@ -1,15 +1,16 @@
 /**
  * 启动初始化（docs 技术架构 §9）：应用命名、ssh:// 深链协议注册。
  * 数据库迁移与预置数据由 web server 启动时执行（fail-fast）；
- * 凭据加密走 D18 密钥桥接（safeStorage 保护 master key 经 env 注入 Nitro 子进程，见 secure-key.ts）。
+ * 认证 / 凭据加密由 web 服务自洽（D21），壳不注入任何密钥或 token。
+ * 深链为壳自己的本地职责：冷启动经 URL 参数带给渲染层，运行时聚焦窗口。
  */
 
 import { app, BrowserWindow } from "electron";
 
-/** 最近一次 ssh:// 深链 URL（渲染层经 web server 消费，见 docs 界面设计 §4.6） */
+/** 最近一次 ssh:// 深链 URL（冷启动经 URL 参数传给渲染层，见 main.ts） */
 export let pendingDeepLink: string | null = null;
 
-/** 深链处理器（main 注册，把 URL 推到 web server，渲染层不直连 ipcMain） */
+/** 深链处理器（main 注册；运行时仅聚焦窗口，不重新导航） */
 let deepLinkHandler: ((url: string) => void) | null = null;
 
 /** 注册深链处理器：每次捕获到 ssh:// 深链都会回调 */

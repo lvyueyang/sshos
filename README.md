@@ -57,7 +57,7 @@ pnpm dev:web
 | `@sshos/core` | 框架无关 SSH 核心逻辑（ssh2 连接 / PTY / SFTP / 指标采集） |
 | `@sshos/policy` | 命令分类引擎（safe / review / block） |
 | `@sshos/web` | TanStack Start 应用包（SFn / Server Route / 桌面应用插件 / App 插件框架） |
-| `@sshos/desktop` | Electron 主进程（启动 web 构建产物或 dev server） |
+| `@sshos/desktop` | Electron 壳（spawn web 构建产物或 dev server + 加载窗口；web 服务可独立运行） |
 
 ## 文档
 

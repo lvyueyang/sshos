@@ -1,5 +1,5 @@
 /**
- * 全局鉴权中间件豁免逻辑单元测试（决策记录 D19）
+ * 全局鉴权中间件豁免逻辑单元测试（决策记录 D21）
  */
 
 import { describe, expect, it } from "vitest";
@@ -10,15 +10,20 @@ describe("isProtected（全局鉴权豁免）", () => {
 		expect(isProtected("/_serverFn/xxx", "serverFn")).toBe(true);
 	});
 
-	it("/api/* 路由受保护（health 除外）", () => {
+	it("/api/* 路由受保护（health 与 auth 除外）", () => {
 		expect(isProtected("/api/pty/1", "router")).toBe(true);
 		expect(isProtected("/api/sftp/download", "router")).toBe(true);
-		expect(isProtected("/api/deeplink", "router")).toBe(true);
 		expect(isProtected("/api/ai/chat", "router")).toBe(true);
 	});
 
 	it("/api/health 自检豁免", () => {
 		expect(isProtected("/api/health", "router")).toBe(false);
+	});
+
+	it("/api/auth/* 登录门豁免（setup/login/status）", () => {
+		expect(isProtected("/api/auth/setup", "router")).toBe(false);
+		expect(isProtected("/api/auth/login", "router")).toBe(false);
+		expect(isProtected("/api/auth/status", "router")).toBe(false);
 	});
 
 	it("页面与静态资源豁免", () => {

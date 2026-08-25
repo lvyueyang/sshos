@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiDeeplinkRouteImport } from './routes/api/deeplink'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiAiChatRouteImport } from './routes/api/ai.chat'
+import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
+import { Route as ApiAuthSetupRouteImport } from './routes/api/auth/setup'
+import { Route as ApiAuthStatusRouteImport } from './routes/api/auth/status'
 import { Route as ApiMetricsSessionIdRouteImport } from './routes/api/metrics.$sessionId'
 import { Route as ApiPtySessionIdRouteImport } from './routes/api/pty.$sessionId'
 import { Route as ApiSftpDownloadRouteImport } from './routes/api/sftp/download'
@@ -23,11 +25,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiDeeplinkRoute = ApiDeeplinkRouteImport.update({
-  id: '/api/deeplink',
-  path: '/api/deeplink',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -36,6 +33,21 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 const ApiAiChatRoute = ApiAiChatRouteImport.update({
   id: '/api/ai/chat',
   path: '/api/ai/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
+  id: '/api/auth/login',
+  path: '/api/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSetupRoute = ApiAuthSetupRouteImport.update({
+  id: '/api/auth/setup',
+  path: '/api/auth/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthStatusRoute = ApiAuthStatusRouteImport.update({
+  id: '/api/auth/status',
+  path: '/api/auth/status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMetricsSessionIdRoute = ApiMetricsSessionIdRouteImport.update({
@@ -61,9 +73,11 @@ const ApiSftpUploadRoute = ApiSftpUploadRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/deeplink': typeof ApiDeeplinkRoute
   '/api/health': typeof ApiHealthRoute
   '/api/ai/chat': typeof ApiAiChatRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/setup': typeof ApiAuthSetupRoute
+  '/api/auth/status': typeof ApiAuthStatusRoute
   '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
   '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
   '/api/sftp/download': typeof ApiSftpDownloadRoute
@@ -71,9 +85,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/deeplink': typeof ApiDeeplinkRoute
   '/api/health': typeof ApiHealthRoute
   '/api/ai/chat': typeof ApiAiChatRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/setup': typeof ApiAuthSetupRoute
+  '/api/auth/status': typeof ApiAuthStatusRoute
   '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
   '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
   '/api/sftp/download': typeof ApiSftpDownloadRoute
@@ -82,9 +98,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/deeplink': typeof ApiDeeplinkRoute
   '/api/health': typeof ApiHealthRoute
   '/api/ai/chat': typeof ApiAiChatRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/setup': typeof ApiAuthSetupRoute
+  '/api/auth/status': typeof ApiAuthStatusRoute
   '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
   '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
   '/api/sftp/download': typeof ApiSftpDownloadRoute
@@ -94,9 +112,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/api/deeplink'
     | '/api/health'
     | '/api/ai/chat'
+    | '/api/auth/login'
+    | '/api/auth/setup'
+    | '/api/auth/status'
     | '/api/metrics/$sessionId'
     | '/api/pty/$sessionId'
     | '/api/sftp/download'
@@ -104,9 +124,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/api/deeplink'
     | '/api/health'
     | '/api/ai/chat'
+    | '/api/auth/login'
+    | '/api/auth/setup'
+    | '/api/auth/status'
     | '/api/metrics/$sessionId'
     | '/api/pty/$sessionId'
     | '/api/sftp/download'
@@ -114,9 +136,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/api/deeplink'
     | '/api/health'
     | '/api/ai/chat'
+    | '/api/auth/login'
+    | '/api/auth/setup'
+    | '/api/auth/status'
     | '/api/metrics/$sessionId'
     | '/api/pty/$sessionId'
     | '/api/sftp/download'
@@ -125,9 +149,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiDeeplinkRoute: typeof ApiDeeplinkRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
+  ApiAuthLoginRoute: typeof ApiAuthLoginRoute
+  ApiAuthSetupRoute: typeof ApiAuthSetupRoute
+  ApiAuthStatusRoute: typeof ApiAuthStatusRoute
   ApiMetricsSessionIdRoute: typeof ApiMetricsSessionIdRoute
   ApiPtySessionIdRoute: typeof ApiPtySessionIdRoute
   ApiSftpDownloadRoute: typeof ApiSftpDownloadRoute
@@ -143,13 +169,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/deeplink': {
-      id: '/api/deeplink'
-      path: '/api/deeplink'
-      fullPath: '/api/deeplink'
-      preLoaderRoute: typeof ApiDeeplinkRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -162,6 +181,27 @@ declare module '@tanstack/react-router' {
       path: '/api/ai/chat'
       fullPath: '/api/ai/chat'
       preLoaderRoute: typeof ApiAiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/login': {
+      id: '/api/auth/login'
+      path: '/api/auth/login'
+      fullPath: '/api/auth/login'
+      preLoaderRoute: typeof ApiAuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/setup': {
+      id: '/api/auth/setup'
+      path: '/api/auth/setup'
+      fullPath: '/api/auth/setup'
+      preLoaderRoute: typeof ApiAuthSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/status': {
+      id: '/api/auth/status'
+      path: '/api/auth/status'
+      fullPath: '/api/auth/status'
+      preLoaderRoute: typeof ApiAuthStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/metrics/$sessionId': {
@@ -197,9 +237,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiDeeplinkRoute: ApiDeeplinkRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiAiChatRoute: ApiAiChatRoute,
+  ApiAuthLoginRoute: ApiAuthLoginRoute,
+  ApiAuthSetupRoute: ApiAuthSetupRoute,
+  ApiAuthStatusRoute: ApiAuthStatusRoute,
   ApiMetricsSessionIdRoute: ApiMetricsSessionIdRoute,
   ApiPtySessionIdRoute: ApiPtySessionIdRoute,
   ApiSftpDownloadRoute: ApiSftpDownloadRoute,

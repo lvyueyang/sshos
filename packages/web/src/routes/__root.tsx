@@ -12,6 +12,7 @@ import {
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { AuthGate } from "#/components/AuthGate";
 import { Sidebar } from "#/components/Sidebar";
 import { TabBar } from "#/components/TabBar";
 import { useDesktopStore } from "#/stores/windows";
@@ -32,7 +33,10 @@ export const Route = createRootRoute({
 function RootComponent() {
 	return (
 		<RootDocument>
-			<AppShell />
+			{/* 认证门：未配置显示设置向导 / 未登录显示登录表单 / 已登录进入桌面（D21） */}
+			<AuthGate>
+				<AppShell />
+			</AuthGate>
 		</RootDocument>
 	);
 }

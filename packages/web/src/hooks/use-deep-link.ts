@@ -1,13 +1,12 @@
 /**
  * ssh:// 深链消费 hook（docs 界面设计 §4.6 / 决策记录 D11）：
- * 轮询 GET /api/deeplink（Electron main 经 HTTP 注入，渲染层不直连 ipcMain），
- * 解析 ssh://user@host:port 后分发——命中已保存连接则连接（聚焦已有 Tab），
+ * 桌面壳冷启动经 URL 参数 ?deeplink= 注入深链（壳的本地职责，不经过服务端 API），
+ * 本 hook 读取并清理后分发——命中已保存连接则连接（聚焦已有 Tab），
  * 否则预填新建连接抽屉由用户补全认证信息。
  */
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
-import { apiFetch } from "#/lib/api-fetch";
 import { listConnectionsSFn } from "#/services/settings/settings.functions";
 import { useUiStore } from "#/stores/ui";
 import { useConnect } from "./use-connect";
@@ -30,13 +29,21 @@ export function parseSshDeepLink(url: string): {
 	}
 }
 
-/** 消费一次深链（GET 后由服务端清空） */
-async function fetchDeepLink(): Promise<string | null> {
-	const res = await apiFetch("/api/deeplink");
-	if (!res.ok) return null;
-	if (res.status === 204) return null;
-	const body = (await res.json()) as { url?: string };
-	return body.url ?? null;
+/** 从 URL 读取并消费深链（读后清理参数，避免刷新重复消费） */
+function consumeDeepLink(): string | null {
+	if (typeof window === "undefined") return null;
+	const params = new URLSearchParams(window.location.search);
+	const raw = params.get("deeplink");
+	if (!raw) return null;
+	params.delete("deeplink");
+	const qs = params.toString();
+	const search = qs ? `?${qs}` : "";
+	window.history.replaceState(
+		null,
+		"",
+		`${window.location.pathname}${search}${window.location.hash}`,
+	);
+	return raw;
 }
 
 /** 挂载时 + 窗口聚焦时消费深链并分发 */
@@ -46,7 +53,7 @@ export function useDeepLink(): void {
 	const requestNewConnection = useUiStore((s) => s.requestNewConnection);
 	const handle = useCallback(async () => {
 		try {
-			const raw = await fetchDeepLink();
+			const raw = consumeDeepLink();
 			if (!raw) return;
 			const { host, port, username } = parseSshDeepLink(raw);
 			if (!host) return;

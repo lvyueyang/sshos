@@ -1,9 +1,9 @@
 /**
  * 敏感凭据加解密（docs 技术架构 §4.6）。
- * 默认走 Node crypto AES-256-GCM（密钥由 SSHOS_MASTER_KEY 派生），保证不以明文落盘；
- * 生产环境由 Electron main 通过环境变量 SSHOS_MASTER_KEY 注入 master key（决策记录 D18 密钥桥接，
- * safeStorage 保护该 key 后经 spawn env 传入，见 packages/desktop/src/secure-key.ts）。
- * setCredentialEncryptor 保留为未来 headless 服务模式（进程内启动 Nitro）的注入点。
+ * AES-256-GCM，主密钥来自数据目录 master.key（setup 时生成，决策记录 D21；
+ * 与认证 JWT 职责分离，改启动密码不触发凭据重加密）。
+ * setCredentialEncryptor 保留为宿主注入点（未来 Electron safeStorage 代理等）。
+ * 生产环境 master.key 缺失或不可读时 fail-fast，不降级明文。
  */
 
 import {
@@ -12,11 +12,12 @@ import {
 	createHash,
 	randomBytes,
 } from "node:crypto";
+import { getOrCreateMasterKeyFile } from "#/services/auth/config";
 
 let encryptFn: ((plain: string) => string) | null = null;
 let decryptFn: ((enc: string) => string) | null = null;
 
-/** 注入宿主加密实现（Electron safeStorage），覆盖默认 Node crypto 方案 */
+/** 注入宿主加密实现（如 Electron safeStorage 代理），覆盖默认文件密钥方案 */
 export function setCredentialEncryptor(
 	encrypt: (plain: string) => string,
 	decrypt: (enc: string) => string,
@@ -25,19 +26,27 @@ export function setCredentialEncryptor(
 	decryptFn = decrypt;
 }
 
-/** 派生 AES-256 主密钥；生产必须由 Electron main 注入 SSHOS_MASTER_KEY（D18） */
+/** 恢复默认文件密钥方案（测试 / 宿主切换用） */
+export function resetCredentialEncryptor(): void {
+	encryptFn = null;
+	decryptFn = null;
+}
+
+/** 派生 AES-256 主密钥：master.key 文件优先，生产缺失抛错、开发降级 dev-only */
 function getMasterKey(): Buffer {
-	const secret = process.env.SSHOS_MASTER_KEY;
-	if (!secret) {
-		// 生产环境未注入 master key 时，降级公开密钥等价明文（仅开发验证期接受，D18 接线后仅剩 Linux 无 keyring 场景）
-		if (process.env.NODE_ENV === "production" && !encryptFn) {
-			console.warn(
-				"[crypto] 生产环境缺少 SSHOS_MASTER_KEY，凭据降级公开密钥（等价明文）",
-			);
+	try {
+		return getOrCreateMasterKeyFile();
+	} catch (error) {
+		if (process.env.NODE_ENV === "production") {
+			throw new Error("[crypto] 生产环境 master.key 不可用，拒绝降级明文", {
+				cause: error,
+			});
 		}
+		console.warn(
+			"[crypto] master.key 不可用，凭据降级公开密钥（等价明文，仅开发）",
+		);
 		return createHash("sha256").update("dev-only-master-key").digest();
 	}
-	return createHash("sha256").update(secret).digest();
 }
 
 /** 加密明文返回 base64（iv + authTag + ciphertext） */
