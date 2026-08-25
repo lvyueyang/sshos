@@ -44,7 +44,7 @@ ssh-os/
 │   │       ├── services/         # 领域服务层（ssh/sftp/transfer/metrics）
 │   │       └── db/               # node:sqlite + drizzle（index/schema/migrate）
 │   └── desktop/                  # Electron 主进程（main/bootstrap/preload）
-└── docs/                         # 01 项目概述 / 02 技术架构 / 03 界面设计 / 04 决策记录 / 05 界面框图
+└── docs/                         # 01 项目概述 / 02 技术架构 / 03 界面设计 / 04 决策记录 / 05 界面框图 / TODO 待办清单
 ```
 
 - 依赖方向：`web` → `core` + `policy`；`desktop` → `web`（Electron main 启动 web 的构建产物或 dev server）
@@ -102,7 +102,9 @@ ssh-os/
 
 - `auditLogMiddleware` 挂载在 Policy Engine **外层**（middleware 数组首位），用 `try/finally` 包裹，policy 抛出的 block/review 错误也要落审计
 - 写 SQLite `log` 表（`type` = `policy_decision`，含 `classification` / `action` / `result`），通过 BatchWriter 批量写入
-- 命令字段与分类器一致：优先提取 `data.command`，避免整包序列化
+- 终端交互命令走 `recordTerminalCommandSFn`（`services/logs`）：客户端命令追踪器累积 onData 输入行，回车落 `terminal_command`（action=`user_input`）；PTY 输出检测到密码提示时抑制密码行落库；命令字段与分类器一致：优先提取 `data.command`，避免整包序列化
+- 日志查询统一走 `listLogsSFn`（`services/logs`，按 sessionId/connectionId/type/classification 过滤 + 分页）；**独立日志应用**（`apps/logs`，桌面图标 + 窗口）统一查看三类日志，AI 面板「历史」按钮为快捷入口
+- BatchWriter 写入失败时条目放回头部按指数退避重试（上限 60s），不丢审计
 
 ### 错误处理
 
