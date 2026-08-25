@@ -260,7 +260,7 @@ ssh-os/
 - **策略引擎挂载边界**：覆盖全部写操作类 SFn（命令执行 + SFTP 变更写操作）；`sendInputSFn` 逐键流不挂策略（见 docs/02 §5.3）
 - **审批无绕过路径**：review 级命令必须经 Approval Registry + `approvalSFn` 重放执行，不存在"直接执行"路径
 - **Prompt 注入隔离**：systemPrompt 代码硬编码，用户消息不得覆盖；`chatSchema` 排除 `system` 角色
-- **全局请求鉴权（D21）**：SFn 与 `/api/*` 端点经 TanStack request 中间件统一校验 `X-SSHOS-TOKEN`（JWT，HS256，与 server.json `serverSecret` 验签）；`/api/auth/*`（setup/login/status）与 `/api/health`、页面/静态资源豁免；未配置启动密码时业务请求一律 401；渲染层请求统一经 `lib/api-fetch.ts` / `serverFns.fetch` 携带 token（存 localStorage，`lib/auth-client.ts`），禁止绕过
+- **全局请求鉴权（D21）**：SFn 与 `/api/*` 端点经 TanStack request 中间件统一校验 `X-SSHOS-TOKEN`（JWT，HS256，与 server.json `serverSecret` 验签）；**公开 SFn**（`lib/public-sfns.ts` 注册，认证 setup/login/status 与 bootstrap 状态）与 `/api/health`、页面/静态资源豁免；未配置启动密码时业务请求一律 401；bootstrap 未 ready 时业务请求一律 503；渲染层请求统一经 `lib/api-fetch.ts` / `serverFns.fetch` 携带 token（存 localStorage，`lib/auth-client.ts`），禁止绕过
 - 凭据经数据目录 master.key 加密，SSH 密钥永不经过 renderer
 
 ## 错误处理与通知

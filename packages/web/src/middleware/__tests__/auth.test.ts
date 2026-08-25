@@ -1,16 +1,23 @@
 /**
- * 全局鉴权中间件豁免逻辑单元测试（决策记录 D21）
+ * 全局鉴权豁免逻辑单元测试（决策记录 D21）
  */
 
 import { describe, expect, it } from "vitest";
+import { registerPublicSfn } from "#/lib/public-sfns";
 import { isProtected } from "../auth";
 
 describe("isProtected（全局鉴权豁免）", () => {
-	it("SFn 调用一律受保护", () => {
-		expect(isProtected("/_serverFn/xxx", "serverFn")).toBe(true);
+	it("未注册公开的 SFn 一律受保护", () => {
+		expect(isProtected("/_serverFn/abc123", "serverFn")).toBe(true);
 	});
 
-	it("/api/* 路由受保护（health 与 auth 除外）", () => {
+	it("注册为公开的 SFn 豁免（auth setup/login/status 等）", () => {
+		const url = "/_serverFn/public-login";
+		registerPublicSfn(url);
+		expect(isProtected(url, "serverFn")).toBe(false);
+	});
+
+	it("/api/* 路由受保护（health 除外）", () => {
 		expect(isProtected("/api/pty/1", "router")).toBe(true);
 		expect(isProtected("/api/sftp/download", "router")).toBe(true);
 		expect(isProtected("/api/ai/chat", "router")).toBe(true);
@@ -18,16 +25,6 @@ describe("isProtected（全局鉴权豁免）", () => {
 
 	it("/api/health 自检豁免", () => {
 		expect(isProtected("/api/health", "router")).toBe(false);
-	});
-
-	it("/api/auth/* 登录门豁免（setup/login/status）", () => {
-		expect(isProtected("/api/auth/setup", "router")).toBe(false);
-		expect(isProtected("/api/auth/login", "router")).toBe(false);
-		expect(isProtected("/api/auth/status", "router")).toBe(false);
-	});
-
-	it("/api/bootstrap/* 初始化状态豁免", () => {
-		expect(isProtected("/api/bootstrap/status", "router")).toBe(false);
 	});
 
 	it("页面与静态资源豁免", () => {

@@ -1,11 +1,12 @@
 /**
  * 首次启动设置向导：服务端未配置（server.json 无启动密码）时显示。
- * 设置启动密码后服务端生成 JWT 密钥与 master.key，返回 token 自动登录。
+ * 调用 setupSFn 设置密码，服务端生成 JWT 密钥与 master.key，返回 token 自动登录。
  */
 
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { setAuthToken } from "#/lib/auth-client";
+import { setupSFn } from "#/services/auth/auth.functions";
 
 export function SetupWizard({ onDone }: { onDone: () => void }) {
 	const { t } = useTranslation();
@@ -23,20 +24,15 @@ export function SetupWizard({ onDone }: { onDone: () => void }) {
 		setSubmitting(true);
 		setError(null);
 		try {
-			const res = await fetch("/api/auth/setup", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ password }),
-			});
-			const data = (await res.json()) as { token?: string; error?: string };
-			if (!res.ok || !data.token) {
-				setError(data.error ?? t("auth.setupFailed"));
-				return;
-			}
-			setAuthToken(data.token);
+			const { token } = await setupSFn({ data: { password } });
+			setAuthToken(token);
 			onDone();
-		} catch {
-			setError(t("auth.networkError"));
+		} catch (err) {
+			setError(
+				err instanceof Error && err.message === "already configured"
+					? t("auth.setupFailed")
+					: t("auth.networkError"),
+			);
 		} finally {
 			setSubmitting(false);
 		}

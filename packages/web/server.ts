@@ -11,6 +11,11 @@ import { readServerConfig } from "#/services/auth/config";
 import { runBootstrap } from "#/services/bootstrap/bootstrap";
 import { batchWriter } from "./src/lib/batch-writer";
 
+// 公开 SFn（认证 / 初始化状态）在模块顶层注册鉴权豁免集合，
+// server 入口强制 import 确保请求到达前集合已填充
+import "#/services/auth/auth.functions";
+import "#/services/bootstrap/bootstrap.functions";
+
 // 监听地址必须显式设置：Nitro preset 未设 NITRO_HOST 时默认绑定所有接口（0.0.0.0）。
 // server.json 的 port/bind 优先（手工编辑后重启生效）；未配置或未指定时收紧到仅本机。
 // 本模块在 Nitro preset 入口 body 读取 env 之前求值，此处写入可被 preset 消费（ESM 依赖先于入口执行）。

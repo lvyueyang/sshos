@@ -1,10 +1,12 @@
 /**
- * 登录表单：服务端已配置启动密码后显示，登录成功写入 token 进入桌面。
+ * 登录表单：服务端已配置启动密码后显示，调用 loginSFn 登录，
+ * 成功写入 token 进入桌面。
  */
 
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { setAuthToken } from "#/lib/auth-client";
+import { loginSFn } from "#/services/auth/auth.functions";
 
 export function LoginForm({ onDone }: { onDone: () => void }) {
 	const { t } = useTranslation();
@@ -17,24 +19,15 @@ export function LoginForm({ onDone }: { onDone: () => void }) {
 		setSubmitting(true);
 		setError(null);
 		try {
-			const res = await fetch("/api/auth/login", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ password }),
-			});
-			const data = (await res.json()) as { token?: string; error?: string };
-			if (!res.ok || !data.token) {
-				setError(
-					data.error === "invalid credentials"
-						? t("auth.wrongPassword")
-						: (data.error ?? t("auth.loginFailed")),
-				);
-				return;
-			}
-			setAuthToken(data.token);
+			const { token } = await loginSFn({ data: { password } });
+			setAuthToken(token);
 			onDone();
-		} catch {
-			setError(t("auth.networkError"));
+		} catch (err) {
+			setError(
+				err instanceof Error && err.message === "invalid credentials"
+					? t("auth.wrongPassword")
+					: t("auth.loginFailed"),
+			);
 		} finally {
 			setSubmitting(false);
 		}

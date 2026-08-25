@@ -1,11 +1,12 @@
 /**
- * 初始化载入门（bootstrap）：轮询 /api/bootstrap/status，running 时显示初始化载入界面
+ * 初始化载入门（bootstrap）：轮询 bootstrapStatusSFn，running 时显示初始化载入界面
  * （开机动画），ready 后进入内容（AuthGate）；服务 fail-fast 退出（轮询持续失败）时
  * 显示启动失败提示与重新加载入口。
  */
 
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { bootstrapStatusSFn } from "#/services/bootstrap/bootstrap.functions";
 
 type GateState = "loading" | "ready" | "failed";
 
@@ -23,9 +24,8 @@ export function BootstrapGate({ children }: { children: ReactNode }) {
 		async function poll(): Promise<void> {
 			while (!cancelled) {
 				try {
-					const res = await fetch("/api/bootstrap/status");
-					const data = (await res.json()) as { phase: string };
-					if (data.phase === "ready") {
+					const { phase } = await bootstrapStatusSFn();
+					if (phase === "ready") {
 						if (!cancelled) setState("ready");
 						return;
 					}

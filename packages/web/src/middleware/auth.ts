@@ -1,27 +1,17 @@
 /**
  * 全局请求鉴权中间件（决策记录 D21）：
- * 对所有 SFn 调用与 /api/* Server Route 校验 X-SSHOS-TOKEN 携带的 JWT
- * （HS256，与 server.json 的 serverSecret 验签），页面 / 静态资源 / health /
- * /api/auth/*（setup/login/status）/ /api/bootstrap/*（初始化状态）豁免。
+ * 对所有受保护请求校验 X-SSHOS-TOKEN 携带的 JWT（HS256，与 server.json 的
+ * serverSecret 验签）。豁免：页面 / 静态资源、/api/health、公开 SFn
+ * （lib/public-sfns 注册表，如 auth setup/login/status、bootstrap status）。
  * 未完成首次配置时业务请求一律 401；初始化（bootstrap）未完成时业务请求一律 503。
  */
 
 import { createMiddleware } from "@tanstack/react-start";
+import { isProtected } from "#/lib/http-guard";
 import { isConfigured, readServerConfig, verifyJwt } from "#/services/auth";
 import { getBootstrapStatus } from "#/services/bootstrap/status";
 
-/** 需要鉴权：SFn 一律校验；/api/* 除 health、auth、bootstrap 外校验；页面与静态资源放行 */
-export function isProtected(
-	pathname: string,
-	handlerType: "serverFn" | "router",
-): boolean {
-	if (handlerType === "serverFn") return true;
-	if (!pathname.startsWith("/api/")) return false;
-	if (pathname.startsWith("/api/health")) return false;
-	if (pathname.startsWith("/api/auth/")) return false;
-	if (pathname.startsWith("/api/bootstrap/")) return false;
-	return true;
-}
+export { isProtected } from "#/lib/http-guard";
 
 export const authMiddleware = createMiddleware({ type: "request" }).server(
 	async ({ request, next, handlerType }) => {
