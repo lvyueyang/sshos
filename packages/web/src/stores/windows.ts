@@ -66,6 +66,8 @@ interface DesktopActions {
 	toggleMaximize(tabId: number, windowId: string): void;
 	closeWindow(tabId: number, windowId: string): void;
 	toggleTheme(): void;
+	/** 显式设置主题（设置面板 / 初始化持久化恢复用） */
+	setTheme(theme: "light" | "dark"): void;
 }
 
 let maxZIndex = 100;
@@ -211,4 +213,6 @@ export const useDesktopStore = create<DesktopState & DesktopActions>((set) => ({
 
 	toggleTheme: () =>
 		set((state) => ({ theme: state.theme === "dark" ? "light" : "dark" })),
+
+	setTheme: (theme) => set({ theme }),
 }));

@@ -11,6 +11,7 @@ import {
 	listConnectionsSFn,
 	listGroupsSFn,
 } from "#/services/settings/settings.functions";
+import { useSettingsUiStore } from "#/stores/settings-ui";
 import { type ConnectionPrefill, useUiStore } from "#/stores/ui";
 import { useDesktopStore } from "#/stores/windows";
 import { ConnectionDrawer } from "./ConnectionDrawer";
@@ -171,6 +172,16 @@ export function Sidebar() {
 					style={{ background: "var(--accent)" }}
 				>
 					+ {t("sidebar.newConnection")}
+				</button>
+				<button
+					type="button"
+					title={t("sidebar.settings")}
+					aria-label={t("sidebar.settings")}
+					onClick={() => useSettingsUiStore.getState().openSettings()}
+					className="flex size-8 items-center justify-center rounded-md text-sm"
+					style={{ color: "var(--muted)", border: "1px solid var(--rule)" }}
+				>
+					⚙
 				</button>
 			</div>
 

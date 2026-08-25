@@ -12,9 +12,12 @@ import {
 	createGroupSchema,
 	deleteConnectionSchema,
 	getConnectionSettingSchema,
+	getGlobalSettingSchema,
+	getSystemInfoSchema,
 	type JsonValue,
 	recordAuditSchema,
 	setConnectionSettingSchema,
+	setGlobalSettingSchema,
 	testConnectionSchema,
 	updateConnectionSchema,
 } from "./settings.schemas";
@@ -24,9 +27,12 @@ import {
 	deleteConnection,
 	getConnection,
 	getConnectionSetting,
+	getSetting,
+	getSystemInfo,
 	listConnections,
 	listGroups,
 	setConnectionSetting,
+	setSetting,
 	updateConnection,
 } from "./settings.server";
 
@@ -133,6 +139,27 @@ export const setConnectionSettingSFn = createServerFn({ method: "POST" })
 		await setConnectionSetting(data.connectionId, data.key, data.value);
 		return { ok: true };
 	});
+
+/** 读取全局设置（setting 表，键值 JSON 序列化；如 appearance.theme） */
+export const getGlobalSettingSFn = createServerFn({ method: "GET" })
+	.validator(getGlobalSettingSchema)
+	.handler(async ({ data }): Promise<JsonValue | undefined> => {
+		const value = await getSetting<unknown>(data.key);
+		return value as JsonValue | undefined;
+	});
+
+/** 写入全局设置（upsert；值 JSON 序列化） */
+export const setGlobalSettingSFn = createServerFn({ method: "POST" })
+	.validator(setGlobalSettingSchema)
+	.handler(async ({ data }) => {
+		await setSetting(data.key, data.value);
+		return { ok: true };
+	});
+
+/** 系统信息（通用设置页：数据目录 / 运行环境） */
+export const getSystemInfoSFn = createServerFn({ method: "GET" })
+	.validator(getSystemInfoSchema)
+	.handler(async () => getSystemInfo());
 
 /** App 框架审计记录（ctx.audit.record 的服务端落库通道） */
 export const recordAuditSFn = createServerFn({ method: "POST" })

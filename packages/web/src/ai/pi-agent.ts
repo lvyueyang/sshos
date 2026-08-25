@@ -5,13 +5,17 @@
  *
  * API 已按 0.84.2 实测定稿（W0 spike）：createAgentSession + defineTool(TypeBox) +
  * session.subscribe / session.prompt，无 Pi 类 / registerTool / stream()。
+ * 模型 / 凭据 / 设置取自项目自有 pi 运行时（ai-config，与用户 ~/.pi 隔离）。
  */
 
 import {
 	createAgentSession,
 	defineTool,
+	type ModelRuntime,
+	type SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { resolveConfiguredModel } from "#/services/ai-config/ai-config.server";
 
 /** 工具 handler 集：由 ai.functions.ts 注入（内部走 SFn，写命令自动过 Policy Engine） */
 export interface AgentTools {
@@ -64,6 +68,7 @@ export async function createPiAgent(tools: AgentTools) {
 	const { session, modelFallbackMessage } = await createAgentSession({
 		noTools: "builtin",
 		customTools: [shellTool, fileReadTool, listDirTool],
+		...(await resolveSessionConfig()),
 	});
 
 	return {
@@ -72,6 +77,22 @@ export async function createPiAgent(tools: AgentTools) {
 		prompt: session.prompt.bind(session),
 		subscribe: session.subscribe.bind(session),
 	};
+}
+
+/**
+ * 解析项目自有 pi 运行时配置：agentDir / modelRuntime / settingsManager / 默认模型 /
+ * cwd 全部指到项目数据目录，与用户本机 ~/.pi 隔离（模型配置 UI 的消费端）。
+ */
+async function resolveSessionConfig(): Promise<{
+	agentDir: string;
+	cwd: string;
+	modelRuntime: ModelRuntime;
+	settingsManager: SettingsManager;
+	model: ReturnType<ModelRuntime["getModel"]>;
+}> {
+	const { modelRuntime, settingsManager, model, agentDir, cwd } =
+		await resolveConfiguredModel();
+	return { modelRuntime, settingsManager, model, agentDir, cwd };
 }
 
 /** 工具 handler 结果转 AgentToolResult：文本进 content，失败标志进 details */

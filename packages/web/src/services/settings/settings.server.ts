@@ -14,6 +14,7 @@ import {
 	connectionSetting,
 	setting,
 } from "#/db/schema";
+import { getDataDir } from "#/lib/paths";
 
 /** 连接写操作入参（敏感字段为明文，入库前加密） */
 export interface ConnectionInput {
@@ -150,6 +151,11 @@ export async function setSetting<T>(key: string, value: T): Promise<void> {
 		.onConflictDoUpdate({ target: setting.key, set: { value: json } });
 }
 
+/** 删除全局设置（upsert 清理用，避免残留 null 占位行） */
+export async function deleteSetting(key: string): Promise<void> {
+	await db.delete(setting).where(eq(setting.key, key));
+}
+
 /** 读取每连接配置（如 app.<id>.state / desktop.layout） */
 export async function getConnectionSetting<T>(
 	connectionId: number,
@@ -213,4 +219,9 @@ export async function recordConnectionHistory(input: {
 /** 解密连接凭据（供 ssh.server 组装 ConnectionOptions） */
 export function decryptCredential(enc?: string | null): string | undefined {
 	return enc ? decrypt(enc) : undefined;
+}
+
+/** 系统信息（通用设置页展示；数据目录为服务端唯一事实来源） */
+export function getSystemInfo(): { dataDir: string } {
+	return { dataDir: getDataDir() };
 }

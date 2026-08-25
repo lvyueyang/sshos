@@ -21,3 +21,16 @@ export const aiChatSchema = z.object({
 		}),
 	),
 });
+
+/** 对话消息（role 仅 user / assistant，system 由 guardChatInput 拒绝） */
+export interface AiChatMessage {
+	role: "user" | "assistant";
+	content: string;
+}
+
+/** AI 对话流帧（SFn 流式 chunk，客户端逐块消费）：
+ * text-delta 为正常增量；error 为服务端终止帧（未配置模型 / prompt 失败 / 空响应），
+ * 客户端必须展示错误消息而非静默（不吞错） */
+export type AiStreamChunk =
+	| { type: "text-delta"; delta: string }
+	| { type: "error"; message: string };

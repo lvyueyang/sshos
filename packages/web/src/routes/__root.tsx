@@ -11,10 +11,12 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthGate } from "#/components/AuthGate";
 import { BootstrapGate } from "#/components/BootstrapGate";
+import { SettingsWindow } from "#/components/SettingsWindow";
 import { Sidebar } from "#/components/Sidebar";
+import { loadPersistedTheme } from "#/components/settings/GeneralSettingsPanel";
 import { TabBar } from "#/components/TabBar";
 import { useDesktopStore } from "#/stores/windows";
 import "#/lib/i18n";
@@ -47,6 +49,11 @@ function RootComponent() {
 
 /** 应用外壳：左侧连接侧栏 + 右侧 Tab 栏与桌面内容区（docs 界面设计 §2.1） */
 function AppShell() {
+	// 启动后恢复持久化主题（appearance.theme），未配置保持默认 dark
+	useEffect(() => {
+		void loadPersistedTheme();
+	}, []);
+
 	return (
 		<div className="flex h-full overflow-hidden">
 			<Sidebar />
@@ -56,6 +63,8 @@ function AppShell() {
 					<Outlet />
 				</main>
 			</div>
+			{/* 系统设置全局浮层（不绑定 Tab，z 高于桌面） */}
+			<SettingsWindow />
 		</div>
 	);
 }

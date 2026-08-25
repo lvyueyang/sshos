@@ -74,6 +74,20 @@ export const setConnectionSettingSchema = z.object({
 	value: z.unknown(),
 });
 
+/** 读取全局设置（setting 表，键值 JSON；如 appearance.theme） */
+export const getGlobalSettingSchema = z.object({
+	key: z.string().min(1),
+});
+
+/** 写入全局设置（upsert；value 为 JSON 可序列化值） */
+export const setGlobalSettingSchema = z.object({
+	key: z.string().min(1),
+	value: z.unknown(),
+});
+
+/** 系统信息查询（通用设置页展示数据目录等环境信息，无入参） */
+export const getSystemInfoSchema = z.object({});
+
 /** App 框架审计记录（ctx.audit.record，落 ai_audit 类日志） */
 export const recordAuditSchema = z.object({
 	sessionId: z.string(),

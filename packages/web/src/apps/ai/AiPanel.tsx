@@ -18,6 +18,7 @@ import {
 import { useUiStore } from "#/stores/ui";
 import { AuditHistoryPanel } from "./AuditHistoryPanel";
 import { aiChatSFn } from "./ai.functions";
+import type { AiStreamChunk } from "./ai.schemas";
 
 interface AiPanelProps {
 	sessionId: string;
@@ -90,6 +91,23 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 		});
 	};
 
+	/** 结束当前 assistant 消息为错误/提示（保留已有部分文本，避免吞掉内容） */
+	const finishAssistantWith = (label: string, message: string) => {
+		setMessages((prev) => {
+			const copy = [...prev];
+			const last = copy[copy.length - 1] ?? {
+				role: "assistant" as const,
+				content: "",
+			};
+			const prefix = last.content ? "\n\n" : "";
+			copy[copy.length - 1] = {
+				role: "assistant",
+				content: `${last.content}${prefix}[${label}] ${message}`,
+			};
+			return copy;
+		});
+	};
+
 	const send = async () => {
 		const text = input.trim();
 		if (!text || loading) return;
@@ -104,15 +122,25 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 				data: { sessionId, messages: history },
 				signal: controller.signal,
 			});
-			await consumeDeltaStream(stream, appendAssistantDelta, controller.signal);
+			// 消费流：error 帧 / 空响应 / 正常增量三种终态都必须有可见反馈
+			const result = await consumeDeltaStream(
+				stream,
+				appendAssistantDelta,
+				controller.signal,
+			);
+			if (result.type === "error") {
+				finishAssistantWith("错误", result.message);
+			} else if (!result.hasContent) {
+				finishAssistantWith(
+					"提示",
+					"模型未返回任何内容。请检查 baseUrl（需以 /v1 结尾）、API 类型、API Key，以及端点是否支持 OpenAI 流式与工具调用。",
+				);
+			}
 		} catch (err) {
 			// 窗口关闭主动取消：静默结束，不展示错误
 			if ((err as Error).name === "AbortError") return;
 			const msg = err instanceof Error ? err.message : String(err);
-			setMessages((prev) => [
-				...prev.slice(0, -1),
-				{ role: "assistant", content: `[请求失败] ${msg}` },
-			]);
+			finishAssistantWith("请求失败", msg);
 		} finally {
 			setLoading(false);
 			if (abortRef.current === controller) abortRef.current = null;
@@ -206,16 +234,27 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 	);
 }
 
-/** 消费 aiChatSFn 的 AiTextDelta 增量流（typed stream），逐块回调增量文本 */
+/** 消费 aiChatSFn 的 AiStreamChunk 流（typed stream），逐块回调增量文本。
+ * 返回终态：error 帧（含消息）或正常结束（是否产出过内容）。 */
 async function consumeDeltaStream(
-	stream: ReadableStream<{ type: "text-delta"; delta: string }>,
+	stream: ReadableStream<AiStreamChunk>,
 	onDelta: (delta: string) => void,
 	signal: AbortSignal,
-): Promise<void> {
+): Promise<
+	{ type: "ok"; hasContent: boolean } | { type: "error"; message: string }
+> {
 	const reader = stream.getReader();
+	let hasContent = false;
 	for (;;) {
 		const { done, value } = await reader.read();
 		if (done || signal.aborted) break;
-		if (value?.type === "text-delta" && value.delta) onDelta(value.delta);
+		if (value?.type === "text-delta" && value.delta) {
+			hasContent = true;
+			onDelta(value.delta);
+		} else if (value?.type === "error") {
+			// error 为服务端终止帧，读完即返回
+			return { type: "error", message: value.message };
+		}
 	}
+	return { type: "ok", hasContent };
 }

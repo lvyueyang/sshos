@@ -11,24 +11,13 @@ import { logger } from "#/lib/logger";
 import { guardChatInput } from "#/middleware/prompt-guard";
 import { ensureSftp, sftpManager } from "#/services/sftp/sftp.server";
 import { execWithPolicy } from "#/services/ssh/exec.service";
+import type { AiChatMessage, AiStreamChunk } from "./ai.schemas";
 
-/** 对话消息（role 仅 user / assistant，system 由 guardChatInput 拒绝） */
-export interface AiChatMessage {
-	role: "user" | "assistant";
-	content: string;
-}
-
-/** AI 增量文本帧（SFn 流式 chunk，客户端逐块消费） */
-export interface AiTextDelta {
-	type: "text-delta";
-	delta: string;
-}
-
-/** 构造 AI 对话增量流（SFn 流式）：注入检测 → Pi 生成 → AiTextDelta 流 */
+/** 构造 AI 对话增量流（SFn 流式）：注入检测 → Pi 生成 → AiStreamChunk 流 */
 export async function createAiChatStream(
 	sessionId: string,
 	messages: AiChatMessage[],
-): Promise<ReadableStream<AiTextDelta>> {
+): Promise<ReadableStream<AiStreamChunk>> {
 	guardChatInput(messages);
 
 	const tools: AgentTools = {
@@ -96,7 +85,7 @@ export async function createAiChatStream(
 		"Pi agent 已创建",
 	);
 	// 控制器与关闭标记提升到流外：prompt 失败时也能结束流（否则客户端 loading 卡死）
-	let streamController: ReadableStreamDefaultController<AiTextDelta> | null =
+	let streamController: ReadableStreamDefaultController<AiStreamChunk> | null =
 		null;
 	let closed = false;
 	const closeStream = () => {
@@ -105,56 +94,143 @@ export async function createAiChatStream(
 			streamController?.close();
 		}
 	};
-	const stream = new ReadableStream<AiTextDelta>({
+	/** 推送错误帧并结束流（错误必须到达客户端，禁止静默吞错） */
+	const fail = (message: string) => {
+		if (closed) return;
+		streamController?.enqueue({ type: "error", message });
+		closeStream();
+	};
+
+	const stream = new ReadableStream<AiStreamChunk>({
 		start(controller) {
 			streamController = controller;
+			// 未配置可用模型：直接推送错误帧，不再发起 prompt（实测 prompt 会 reject 且零事件）
+			if (agent.modelFallbackMessage) {
+				fail(
+					`未配置可用模型，请到「系统设置 → 模型」配置 Provider API Key 并设置默认模型。\n${agent.modelFallbackMessage}`,
+				);
+				return;
+			}
 			// 部分模型只发 text_end（完整文本），用其兜底；已有 text_delta 增量则跳过避免重复
 			let hasTextDelta = false;
+			let sawToolCall = false;
+			// pi 重试/失败明细：自定义端点不支持流式 / key 无效 / baseUrl 错误时，pi 重试后空返回
+			const retryErrors: string[] = [];
 			const enqueue = (delta: string) => {
 				if (!closed) controller.enqueue({ type: "text-delta", delta });
 			};
-			agent.subscribe((event: { type: string; text?: string }) => {
-				if (event.type !== "message_update") {
-					logger.info({ type: event.type }, "Pi 事件");
-				}
-				// Pi 0.84.2 的文本增量在 message_update.assistantMessageEvent：
-				// 部分模型产出 text_delta（增量），部分只发 text_end（完整文本），两者都处理
-				if (event.type === "message_update") {
-					const deltaEvent = (
-						event as {
-							assistantMessageEvent?: {
-								type?: string;
-								delta?: string;
-								content?: string;
-							};
-						}
-					).assistantMessageEvent;
-					if (deltaEvent?.type === "text_delta" && deltaEvent.delta) {
-						hasTextDelta = true;
-						enqueue(deltaEvent.delta);
-					} else if (
-						deltaEvent?.type === "text_end" &&
-						deltaEvent.content &&
-						!hasTextDelta
-					) {
-						enqueue(deltaEvent.content);
+			agent.subscribe(
+				(event: {
+					type: string;
+					text?: string;
+					errorMessage?: string;
+					finalError?: string;
+					success?: boolean;
+					willRetry?: boolean;
+					assistantMessageEvent?: {
+						type?: string;
+						delta?: string;
+						content?: string;
+						error?: { stopReason?: string; errorMessage?: string };
+					};
+				}) => {
+					if (event.type !== "message_update") {
+						logger.info({ type: event.type }, "Pi 事件");
 					}
-				}
-				// turn_end / agent_end 与失败路径都可能触发，必须防重复 close
-				if (event.type === "turn_end" || event.type === "agent_end") {
-					closeStream();
-				}
-			});
+					// 收集重试失败原因（自定义端点的流式 / 鉴权 / 路径问题通常在此暴露）
+					if (event.type === "auto_retry_start" && event.errorMessage) {
+						retryErrors.push(event.errorMessage);
+					}
+					if (
+						event.type === "auto_retry_end" &&
+						event.success === false &&
+						event.finalError
+					) {
+						retryErrors.push(event.finalError);
+					}
+					// Pi 0.84.2 的文本增量在 message_update.assistantMessageEvent：
+					// 部分模型产出 text_delta（增量），部分只发 text_end（完整文本），两者都处理
+					if (event.type === "message_update") {
+						const deltaEvent = event.assistantMessageEvent;
+						if (deltaEvent?.type === "toolcall_start") {
+							sawToolCall = true;
+						} else if (
+							deltaEvent?.type === "error" &&
+							deltaEvent.error?.errorMessage
+						) {
+							retryErrors.push(deltaEvent.error.errorMessage);
+						} else if (deltaEvent?.type === "text_delta" && deltaEvent.delta) {
+							hasTextDelta = true;
+							enqueue(deltaEvent.delta);
+						} else if (
+							deltaEvent?.type === "text_end" &&
+							deltaEvent.content &&
+							!hasTextDelta
+						) {
+							hasTextDelta = true;
+							enqueue(deltaEvent.content);
+						}
+					}
+					// turn_end / agent_end 每次尝试都触发（willRetry=true 表示还会重试），
+					// 不能据此裁决空响应；agent_settled 才是整个 agent 运行结束的可靠信号。
+					// 成功且有文本时提前关流（运行已无后续），避免 agent_settled 偶发缺失导致挂起
+					if (
+						event.type === "agent_end" &&
+						event.willRetry === false &&
+						hasTextDelta
+					) {
+						closeStream();
+					}
+					// agent_settled：全程无文本 → 透出失败原因（含 pi 重试明细与端点指引）
+					if (event.type === "agent_settled") {
+						if (!closed) {
+							if (!hasTextDelta) {
+								fail(buildEmptyResponseError(retryErrors, sawToolCall));
+								return;
+							}
+							closeStream();
+						}
+					}
+				},
+			);
 		},
 	});
 
-	// 历史消息作为本轮上下文传入（Pi 会话为请求级，无跨请求记忆）
-	const promptText = messages.map((m) => m.content).join("\n");
-	void agent.prompt(promptText).catch((err: Error) => {
-		logger.warn({ err }, "Pi prompt 调用失败");
-		// 失败也要结束流，否则客户端永远等不到 done、loading 卡死
-		closeStream();
-	});
+	// 无可用模型时已在 start 内推送错误帧，不再发起 prompt
+	if (!agent.modelFallbackMessage) {
+		// 历史消息作为本轮上下文传入（Pi 会话为请求级，无跨请求记忆）
+		const promptText = messages.map((m) => m.content).join("\n");
+		void agent.prompt(promptText).catch((err: Error) => {
+			logger.warn({ err }, "Pi prompt 调用失败");
+			// 失败必须把错误传给客户端，而不是只关流（否则"发送消息无提示"）
+			fail(err instanceof Error ? err.message : String(err));
+		});
+	}
 
 	return stream;
+}
+
+/**
+ * 构造「模型未返回内容」错误帧：透出 pi 的真实失败原因，并给出针对
+ * 自定义端点（OpenAI 兼容）的可执行排查指引。pi 对自定义端点强制
+ * `stream:true` SSE 流式请求，非流式响应会报 "Stream ended without
+ * finish_reason" 并重试后空返回（实测确认）。
+ */
+export function buildEmptyResponseError(
+	retryErrors: string[],
+	sawToolCall: boolean,
+): string {
+	if (sawToolCall) {
+		return "模型仅执行了工具调用，未产生文本回复，请重试或换用支持工具调用的模型。";
+	}
+	const detail = retryErrors.at(-1);
+	const base = "模型未返回任何内容";
+	if (!detail) {
+		return `${base}。请检查：① baseUrl 是否正确（OpenAI 兼容端点通常需以 /v1 结尾）；② API 类型是否与端点匹配；③ API Key 是否有效、网络是否可达。`;
+	}
+	const streamingIssue = /finish_reason|stream|chunk/i.test(detail);
+	if (streamingIssue) {
+		return `${base}（${detail}）。自定义端点必须支持 OpenAI SSE 流式返回（stream:true + data: 分块），请确认 baseUrl 指向正确的 /v1 端点且服务端开启流式。`;
+	}
+	return `${base}（${detail}）。请检查 baseUrl / API 类型 / API Key 是否正确、端点是否支持 OpenAI 流式与工具调用。`;
 }
