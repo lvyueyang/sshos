@@ -46,14 +46,14 @@ export const connection = sqliteTable(
 		authType: text("auth_type", {
 			enum: ["password", "privateKey", "systemKey", "agent"],
 		}).notNull(),
-		/** 密码，safeStorage 加密 */
-		passwordEnc: text("password_enc"),
-		/** 手动粘贴的私钥，safeStorage 加密 */
-		privateKeyEnc: text("private_key_enc"),
+		/** 密码，明文存储 */
+		password: text("password"),
+		/** 手动粘贴的私钥，明文存储 */
+		privateKey: text("private_key"),
 		/** 系统密钥路径，如 ~/.ssh/id_ed25519 */
 		privateKeyPath: text("private_key_path"),
-		/** 私钥 passphrase，safeStorage 加密 */
-		passphraseEnc: text("passphrase_enc"),
+		/** 私钥 passphrase，明文存储 */
+		passphrase: text("passphrase"),
 		term: text("term").default("xterm-256color"),
 		/** 标签装饰色 */
 		color: text("color"),

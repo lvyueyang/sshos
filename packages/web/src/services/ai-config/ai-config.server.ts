@@ -1,14 +1,13 @@
 /**
  * AI 模型配置领域服务（docs 技术架构 §8 扩展，本期「模型配置 + 系统设置 UI」服务端）：
  * 以 pi 运行时文件为单一事实来源——models.json（provider 目录）/ settings.json（默认模型），
- * 凭据加密入库（db/crypto）后经 ModelRuntime.setRuntimeApiKey 注入内存，不落明文。
+ * 凭据明文存 setting 表（决策记录 D23）后经 ModelRuntime.setRuntimeApiKey 注入内存。
  * ModelRuntime 为进程内单例，Pi Host（ai/pi-agent.ts）复用同一实例消费配置。
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ModelRuntime, SettingsManager } from "@earendil-works/pi-coding-agent";
-import { decrypt, encrypt } from "#/db/crypto";
 import { getDataDir } from "#/lib/paths";
 import {
 	deleteSetting,
@@ -79,30 +78,30 @@ export function getSettingsConfigPath(): string {
 	return join(getPiAgentDir(), "settings.json");
 }
 
-/** 凭据存储 key：setting 表 ai.credential.<provider>，值为 encrypt 后的 base64 */
+/** 凭据存储 key：setting 表 ai.credential.<provider>，值为明文 API key */
 function credentialKey(provider: string): string {
 	return `ai.credential.${provider}`;
 }
 
-/** 保存 provider API key（master.key 加密入库，不落明文） */
+/** 保存 provider API key（明文入库，不落盘到运行时文件） */
 export async function saveApiKey(
 	provider: string,
 	apiKey: string,
 ): Promise<void> {
-	await setSetting(credentialKey(provider), encrypt(apiKey));
+	await setSetting(credentialKey(provider), apiKey);
 	// 注入到运行时单例（若已创建），后续请求立即可用
 	const runtime = runtimePromise ? await runtimePromise : null;
 	if (runtime) await runtime.setRuntimeApiKey(provider, apiKey);
 }
 
-/** 清除 provider API key（加密存储与运行时内存一并移除） */
+/** 清除 provider API key（setting 表与运行时内存一并移除） */
 export async function clearApiKey(provider: string): Promise<void> {
 	await deleteSetting(credentialKey(provider));
 	const runtime = runtimePromise ? await runtimePromise : null;
 	if (runtime) await runtime.removeRuntimeApiKey(provider);
 }
 
-/** 读取已加密存储的全部 API key 并注入运行时（服务重启后恢复） */
+/** 读取已存储的全部 API key 并注入运行时（服务重启后恢复） */
 async function loadStoredApiKeys(runtime: ModelRuntime): Promise<void> {
 	// setting 表无按前缀扫描接口，扫描内置 + 自定义 provider 的凭据键
 	const providers = new Set<string>(BUILTIN_PROVIDERS);
@@ -110,10 +109,10 @@ async function loadStoredApiKeys(runtime: ModelRuntime): Promise<void> {
 		providers.add(id);
 	}
 	for (const provider of providers) {
-		const enc = await getSetting<string>(credentialKey(provider));
-		if (!enc) continue;
+		const key = await getSetting<string>(credentialKey(provider));
+		if (!key) continue;
 		try {
-			await runtime.setRuntimeApiKey(provider, decrypt(enc));
+			await runtime.setRuntimeApiKey(provider, key);
 		} catch {
 			// 单条凭据失效不阻断整体恢复，留待用户重新配置
 		}
@@ -123,7 +122,7 @@ async function loadStoredApiKeys(runtime: ModelRuntime): Promise<void> {
 /** 进程内 ModelRuntime 单例（lazy 创建，避免服务启动即做模型目录解析） */
 let runtimePromise: Promise<ModelRuntime> | null = null;
 
-/** 获取（或创建）全局 ModelRuntime 单例，按项目 models.json + 加密凭据初始化 */
+/** 获取（或创建）全局 ModelRuntime 单例，按项目 models.json + 明文凭据初始化 */
 export function getModelRuntime(): Promise<ModelRuntime> {
 	if (!runtimePromise) {
 		runtimePromise = (async () => {

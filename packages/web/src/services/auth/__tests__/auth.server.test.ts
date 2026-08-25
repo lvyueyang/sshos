@@ -18,11 +18,10 @@ afterAll(() => {
 });
 
 describe("认证服务逻辑", () => {
-	it("setup：写入 server.json + master.key，返回 JWT，二次 setup 抛错", () => {
+	it("setup：写入 server.json，返回 JWT，二次 setup 抛错", () => {
 		const token = setupServer("setup-pass");
 		expect(token.split(".")).toHaveLength(3);
 		expect(existsSync(getServerConfigPath())).toBe(true);
-		expect(existsSync(join(dataDir, "master.key"))).toBe(true);
 		expect(isConfigured()).toBe(true);
 		expect(() => setupServer("another")).toThrow("already configured");
 	});

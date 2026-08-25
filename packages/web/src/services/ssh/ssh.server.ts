@@ -1,6 +1,7 @@
 /**
  * SSH 领域服务：连接生命周期（基于 @sshos/core SshManager）。
- * 从数据库连接记录解密凭据组装 ConnectionOptions，支持四种认证方式（决策记录 D4）。
+ * 从数据库连接记录组装 ConnectionOptions，支持四种认证方式（决策记录 D4）。
+ * 凭据明文存储（决策记录 D23），直接读取。
  */
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -15,7 +16,7 @@ import {
 } from "@sshos/core";
 import { approvalRegistry } from "#/approval/registry";
 import { clearToolCache } from "#/services/capabilities/cache";
-import { decryptCredential, getConnection } from "../settings/settings.server";
+import { getConnection } from "../settings/settings.server";
 
 export const sshManager = new SshManager();
 export const ptyManager = new PtyManager();
@@ -31,7 +32,7 @@ function readSystemKey(privateKeyPath?: string | null): string | undefined {
 	return readFileSync(expandHome(privateKeyPath), "utf-8");
 }
 
-/** 从数据库连接记录组装 ConnectionOptions（凭据解密） */
+/** 从数据库连接记录组装 ConnectionOptions（凭据直读明文） */
 function toConnectionOptions(
 	conn: Awaited<ReturnType<typeof getConnection>>,
 ): ConnectionOptions {
@@ -42,12 +43,12 @@ function toConnectionOptions(
 		port: conn.port ?? 22,
 		username: conn.username,
 		authType: conn.authType,
-		password: decryptCredential(conn.passwordEnc),
+		password: conn.password ?? undefined,
 		privateKey:
 			conn.authType === "systemKey"
 				? readSystemKey(conn.privateKeyPath)
-				: decryptCredential(conn.privateKeyEnc),
-		passphrase: decryptCredential(conn.passphraseEnc),
+				: (conn.privateKey ?? undefined),
+		passphrase: conn.passphrase ?? undefined,
 		term: conn.term ?? "xterm-256color",
 		isProduction: Boolean(conn.isProduction),
 		aiEnabled: conn.aiEnabled !== 0,
@@ -140,7 +141,7 @@ export async function testConnection(
 	}
 }
 
-/** 建立连接：查询连接配置 → 解密凭据 → ssh2 连接并登记会话 */
+/** 建立连接：查询连接配置 → 组装 ConnectionOptions → ssh2 连接并登记会话 */
 export async function connectSession(
 	connectionId: number,
 ): Promise<SshSession> {

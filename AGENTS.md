@@ -146,7 +146,7 @@ ssh-os/
 - `node:sqlite`（`DatabaseSync`）+ `drizzle-orm/node-sqlite` 适配器，零原生依赖
 - **事务回调必须同步**（同 better-sqlite3）；普通查询经 drizzle 驱动返回 Promise，服务层统一 `await db.select()` 风格
 - `log` 表枚举：`type` = `ai_audit | terminal_command | policy_decision`；`classification` = `safe | review | block`；`action` = `executed | blocked | pending_approval | approved | rejected | user_input`；`result` = `success | failure | timeout`
-- 敏感凭据（密码 / 私钥 / passphrase）加密后入库，**不以明文落盘**；加密走 D21 数据目录主密钥——`{dataDir}/master.key`（setup 时生成 32 字节随机 hex，0600），`db/crypto.ts` 派生 AES-256-GCM，生产缺失 fail-fast；`setCredentialEncryptor` 保留宿主注入点；系统密钥（`systemKey`）实时读文件不落库
+- 敏感凭据（密码 / 私钥 / passphrase）与 AI provider API key **明文存储**（决策记录 D23，开发期）：`connection` 表 `password` / `private_key` / `passphrase` 列、`setting` 表 `ai.credential.<provider>`；`updateConnection` 空值不覆盖存量；加密仅在用户明确要求时引入（届时新增决策记录）；系统密钥（`systemKey`）实时读文件不落库
 - 迁移走 `drizzle-kit generate` 生成 SQL + bootstrap `runMigrations()` 程序化迁移，失败即启动失败（fail-fast）
 - 连接会话状态（SSH/PTY/SFTP）是内存态、按 `sessionId` 管理、**不持久化**；仅连接配置落 SQLite
 
@@ -261,7 +261,7 @@ ssh-os/
 - **审批无绕过路径**：review 级命令必须经 Approval Registry + `approvalSFn` 重放执行，不存在"直接执行"路径
 - **Prompt 注入隔离**：systemPrompt 代码硬编码，用户消息不得覆盖；`chatSchema` 排除 `system` 角色
 - **全局请求鉴权（D21）**：SFn 与 `/api/*` 端点经 TanStack request 中间件统一校验 `X-SSHOS-TOKEN`（JWT，HS256，与 server.json `serverSecret` 验签）；**公开 SFn**（`lib/public-sfns.ts` 注册，认证 setup/login/status 与 bootstrap 状态）与 `/api/health`、页面/静态资源豁免；未配置启动密码时业务请求一律 401；bootstrap 未 ready 时业务请求一律 503；渲染层请求统一经 `lib/api-fetch.ts` / `serverFns.fetch` 携带 token（存 localStorage，`lib/auth-client.ts`），禁止绕过
-- 凭据经数据目录 master.key 加密，SSH 密钥永不经过 renderer
+- 凭据明文存储于服务端 SQLite（D23），SSH 密钥永不经过 renderer
 
 ## 错误处理与通知
 

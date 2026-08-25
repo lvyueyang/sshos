@@ -1,11 +1,10 @@
 /**
  * 认证服务逻辑：首次配置（setup）/ 登录（login）/ 状态查询（status）。
- * 读取或写入数据目录 server.json，签发 JWT；master.key 在 setup 时生成。
+ * 读取或写入数据目录 server.json，签发 JWT。
  */
 
 import { randomBytes } from "node:crypto";
 import {
-	getOrCreateMasterKeyFile,
 	hashPassword,
 	isConfigured,
 	readServerConfig,
@@ -16,12 +15,11 @@ import {
 	writeServerConfig,
 } from "./index";
 
-/** 首次配置：写 passwordHash + serverSecret（保留半配置的 port/bind），生成 master.key，返回 token */
+/** 首次配置：写 passwordHash + serverSecret（保留半配置的 port/bind），返回 token */
 export function setupServer(password: string): string {
 	if (isConfigured()) throw new Error("already configured");
 	const existing = readServerConfig();
 	const serverSecret = randomBytes(32).toString("hex");
-	getOrCreateMasterKeyFile();
 	writeServerConfig({
 		passwordHash: hashPassword(password),
 		serverSecret,

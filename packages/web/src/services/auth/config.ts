@@ -1,10 +1,9 @@
 /**
- * 服务端配置（server.json）与凭据加密主密钥（master.key）读写。
+ * 服务端配置（server.json）读写。
  * server.json 位于数据目录：{ passwordHash, serverSecret, port, bind }，
  * 首次启动经 /api/auth/setup 写入；port/bind 手工编辑后重启生效。
  */
 
-import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getDataDir } from "#/lib/paths";
@@ -68,24 +67,4 @@ export function isConfigured(
 		Boolean(config.passwordHash) &&
 		Boolean(config.serverSecret)
 	);
-}
-
-/** master.key 完整路径（凭据加密主密钥，独立于认证，setup 时生成） */
-export function getMasterKeyPath(): string {
-	return join(getDataDir(), "master.key");
-}
-
-/**
- * 读取或创建凭据加密主密钥（32 字节随机 hex，0600）。
- * 文件缺失时创建；创建失败抛错（生产由 crypto 层 fail-fast，不降级明文）。
- */
-export function getOrCreateMasterKeyFile(): Buffer {
-	const file = getMasterKeyPath();
-	if (existsSync(file)) {
-		return Buffer.from(readFileSync(file, "utf-8").trim(), "hex");
-	}
-	const key = randomBytes(32);
-	mkdirSync(getDataDir(), { recursive: true });
-	writeFileSync(file, key.toString("hex"), { mode: 0o600 });
-	return key;
 }

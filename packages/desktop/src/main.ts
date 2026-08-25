@@ -1,8 +1,8 @@
 /**
  * Electron 主进程：浏览器外壳（决策记录 D21）。
  * 职责仅限：spawn web server（dev vite / 生产 Nitro 产物）、health 自检、
- * 打开 BrowserWindow 加载 web 服务。认证 / 凭据加密 / 配置 / 数据全部由 web
- * 服务自洽（JWT + master.key + server.json），壳不注入 token 或主密钥、无 JSBridge。
+ * 打开 BrowserWindow 加载 web 服务。认证 / 凭据存储 / 配置 / 数据全部由 web
+ * 服务自洽（JWT + server.json），壳不注入 token 或主密钥、无 JSBridge。
  * 深链（ssh://）是壳自己的本地职责：冷启动经 URL 参数带给渲染层，运行时仅聚焦窗口。
  */
 
@@ -87,7 +87,7 @@ function startProductionServer(): Promise<void> {
 	const serverRoot = path.resolve(serverDir, ".output");
 	const serverEntry = path.resolve(serverRoot, "server/index.mjs");
 	// 不注入 PORT / SSHOS_AUTH_TOKEN / SSHOS_MASTER_KEY：端口由 server.json 决定，
-	// 认证与凭据加密由 web 服务自洽（D21）
+	// 认证与凭据存储由 web 服务自洽（D21）
 	const env: NodeJS.ProcessEnv = {
 		...process.env,
 		NODE_ENV: "production",

@@ -2,12 +2,11 @@
  * 认证服务单元测试：server.json 配置读写、scrypt 密码哈希、JWT 签发与校验。
  */
 
-import { existsSync, mkdtempSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import {
-	getOrCreateMasterKeyFile,
 	isConfigured,
 	readServerConfig,
 	SERVER_DEFAULTS,
@@ -60,17 +59,6 @@ describe("server.json 配置读写", () => {
 			bind: "127.0.0.1",
 		});
 		expect(readServerConfig()?.port).toBe(SERVER_DEFAULTS.port);
-	});
-});
-
-describe("master.key 生成", () => {
-	it("首次生成 32 字节 hex 文件，重复读取保持一致", () => {
-		const key = getOrCreateMasterKeyFile();
-		expect(key.length).toBe(32);
-		expect(existsSync(join(dataDir, "master.key"))).toBe(true);
-		expect(getOrCreateMasterKeyFile().toString("hex")).toBe(
-			key.toString("hex"),
-		);
 	});
 });
 

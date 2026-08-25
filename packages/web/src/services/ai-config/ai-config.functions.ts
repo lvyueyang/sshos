@@ -31,7 +31,7 @@ export const listModelsSFn = createServerFn({ method: "GET" })
 		return listModels(data.provider);
 	});
 
-/** 保存 provider API key（master.key 加密入库 + 注入运行时） */
+/** 保存 provider API key（明文入库 + 注入运行时） */
 export const saveApiKeySFn = createServerFn({ method: "POST" })
 	.validator(saveApiKeySchema)
 	.handler(async ({ data }) => {

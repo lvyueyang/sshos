@@ -1,12 +1,11 @@
 /**
  * 设置与连接配置服务层：连接 / 分组 / 设置 / 每连接配置的数据库读写。
- * 敏感凭据经 crypto 加密入库；连接时由 ssh.server 解密组装 ConnectionOptions。
+ * 敏感凭据明文存储（决策记录 D23）；连接时由 ssh.server 组装 ConnectionOptions。
  */
 
 import type { AuthType } from "@sshos/core";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "#/db";
-import { decrypt, encrypt } from "#/db/crypto";
 import {
 	connection,
 	connectionGroup,
@@ -16,7 +15,7 @@ import {
 } from "#/db/schema";
 import { getDataDir } from "#/lib/paths";
 
-/** 连接写操作入参（敏感字段为明文，入库前加密） */
+/** 连接写操作入参（敏感字段为明文，直接入库） */
 export interface ConnectionInput {
 	title: string;
 	host: string;
@@ -49,10 +48,10 @@ export async function createConnection(
 			port: input.port ?? 22,
 			username: input.username,
 			authType: input.authType,
-			passwordEnc: input.password ? encrypt(input.password) : undefined,
-			privateKeyEnc: input.privateKey ? encrypt(input.privateKey) : undefined,
+			password: input.password || undefined,
+			privateKey: input.privateKey || undefined,
 			privateKeyPath: input.privateKeyPath,
-			passphraseEnc: input.passphrase ? encrypt(input.passphrase) : undefined,
+			passphrase: input.passphrase || undefined,
 			groupId: input.groupId ?? undefined,
 			term: input.term ?? "xterm-256color",
 			color: input.color,
@@ -76,10 +75,10 @@ export async function updateConnection(
 			port: input.port,
 			username: input.username,
 			authType: input.authType,
-			passwordEnc: input.password ? encrypt(input.password) : undefined,
-			privateKeyEnc: input.privateKey ? encrypt(input.privateKey) : undefined,
+			password: input.password || undefined,
+			privateKey: input.privateKey || undefined,
 			privateKeyPath: input.privateKeyPath,
-			passphraseEnc: input.passphrase ? encrypt(input.passphrase) : undefined,
+			passphrase: input.passphrase || undefined,
 			groupId: input.groupId === undefined ? undefined : input.groupId,
 			term: input.term,
 			color: input.color,
@@ -214,11 +213,6 @@ export async function recordConnectionHistory(input: {
 		connectedAt: new Date(),
 		duration: input.duration,
 	});
-}
-
-/** 解密连接凭据（供 ssh.server 组装 ConnectionOptions） */
-export function decryptCredential(enc?: string | null): string | undefined {
-	return enc ? decrypt(enc) : undefined;
 }
 
 /** 系统信息（通用设置页展示；数据目录为服务端唯一事实来源） */

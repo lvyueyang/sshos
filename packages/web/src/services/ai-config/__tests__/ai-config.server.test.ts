@@ -1,6 +1,6 @@
 /**
  * ai-config 模型配置服务层单元测试：
- * 临时数据目录 + 程序化迁移，覆盖 models.json 读写、凭据加密注入、
+ * 临时数据目录 + 程序化迁移，覆盖 models.json 读写、凭据明文注入、
  * settings.json 默认模型、汇总与枚举、resolveConfiguredModel 解析。
  * 真实 ModelRuntime 走静态内置目录（不联网），验证项目运行时与用户 ~/.pi 隔离。
  */
@@ -9,7 +9,6 @@ import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { decrypt } from "../../../db/crypto";
 import { runMigrations } from "../../../db/migrate";
 import { getSetting } from "../../settings/settings.server";
 import * as aiConfig from "../ai-config.server";
@@ -70,22 +69,20 @@ describe("models.json 自定义 provider 读写", () => {
 	});
 });
 
-describe("凭据加密存储", () => {
-	it("saveApiKey：加密入库可还原，注入后 hasConfiguredAuth 为 true", async () => {
+describe("凭据明文存储", () => {
+	it("saveApiKey：明文入库，注入后 hasConfiguredAuth 为 true", async () => {
 		await resetSingletons();
 		const key = "sk-ant-very-secret";
 		await aiConfig.saveApiKey("anthropic", key);
 
 		const stored = await getSetting<string>("ai.credential.anthropic");
-		expect(stored).toBeDefined();
-		expect(stored).not.toContain(key); // 密文不含明文
-		expect(decrypt(stored ?? "")).toBe(key);
+		expect(stored).toBe(key);
 
 		const runtime = await aiConfig.getModelRuntime();
 		expect(runtime.hasConfiguredAuth("anthropic")).toBe(true);
 	});
 
-	it("clearApiKey：加密存储与运行时一并清除", async () => {
+	it("clearApiKey：明文存储与运行时一并清除", async () => {
 		await aiConfig.clearApiKey("anthropic");
 		expect(await getSetting<string>("ai.credential.anthropic")).toBeUndefined();
 		const runtime = await aiConfig.getModelRuntime();

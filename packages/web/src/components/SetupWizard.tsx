@@ -1,6 +1,6 @@
 /**
  * 首次启动设置向导：服务端未配置（server.json 无启动密码）时显示。
- * 调用 setupSFn 设置密码，服务端生成 JWT 密钥与 master.key，返回 token 自动登录。
+ * 调用 setupSFn 设置密码，服务端生成 JWT 密钥，返回 token 自动登录。
  */
 
 import { type FormEvent, useState } from "react";
