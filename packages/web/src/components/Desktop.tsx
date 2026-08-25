@@ -16,6 +16,7 @@ import type { AppContext, AppDefinition } from "#/app-framework/types";
 import { registerBuiltinApps } from "#/apps";
 import { AiPanel } from "#/apps/ai/AiPanel";
 import { FileManager } from "#/apps/files/FileManager";
+import { LogsWindow } from "#/apps/logs/LogsWindow";
 import { MonitorDashboard } from "#/apps/monitor/MonitorDashboard";
 import { MonitorPanel } from "#/apps/monitor/MonitorPanel";
 import { TerminalWindow } from "#/apps/terminal/TerminalWindow";
@@ -42,6 +43,7 @@ const ICON_COLOR: Record<string, string> = {
 	monitor: "#3aa0c4",
 	ai: "#8b5cf6",
 	clock: "var(--muted)",
+	logs: "var(--warn)",
 };
 
 /** 窗口内容分发：app id → 窗口组件 */
@@ -50,6 +52,7 @@ const WINDOW_CONTENT: Record<string, (sessionId: string) => React.ReactNode> = {
 	files: (sid) => <FileManager sessionId={sid} />,
 	monitor: (sid) => <MonitorDashboard sessionId={sid} />,
 	ai: (sid) => <AiPanel sessionId={sid} />,
+	logs: (sid) => <LogsWindow sessionId={sid} />,
 };
 
 /** 面板内容分发：app id → 面板组件（panel surface） */
@@ -81,7 +84,13 @@ function buildDeps(connectionId: number, sessionId: string): AppManagerDeps {
 		audit: {
 			record: (entry) =>
 				recordAuditSFn({
-					data: { sessionId, command: entry.command },
+					data: {
+						sessionId,
+						command: entry.command,
+						classification: entry.classification,
+						action: entry.action,
+						result: entry.result,
+					},
 				}).then(() => undefined),
 		},
 		log: clientLog,

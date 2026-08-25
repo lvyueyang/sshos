@@ -84,6 +84,20 @@ export interface ContextMenuContext {
 /** 生命周期关闭原因 */
 export type ShutdownReason = "systemExit" | "tabClose" | "userClose";
 
+/** App 审计记录（ctx.audit.record 入参，落 ai_audit 类日志；字段与 db log 表枚举一致） */
+export interface AuditRecord {
+	command: string;
+	classification?: "safe" | "review" | "block";
+	action?:
+		| "executed"
+		| "blocked"
+		| "pending_approval"
+		| "approved"
+		| "rejected"
+		| "user_input";
+	result?: "success" | "failure" | "timeout";
+}
+
 /** 生命周期钩子：实例销毁但状态保留（onSave 产物落 connection_setting） */
 export interface AppLifecycle {
 	onCreate?(ctx: AppContext): Disposable | undefined;
@@ -99,8 +113,10 @@ export interface AppContext {
 	ssh: Record<string, unknown>;
 	/** 命令分类、审批请求 */
 	policy: Record<string, unknown>;
-	/** 审计记录 */
-	audit: Record<string, unknown>;
+	/** 审计记录（经 SFn 网关落 ai_audit 类日志） */
+	audit: {
+		record(entry: AuditRecord): void;
+	};
 	/** 每连接键值存储（connection_setting） */
 	settings: Record<string, unknown>;
 	/** 窗口 / 面板 / 状态栏写入与实例管理 */

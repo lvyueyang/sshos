@@ -5,7 +5,7 @@
  * 批准后 approvalSFn 重放执行（无绕过路径）。
  */
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
 	approvalSFn,
@@ -17,6 +17,7 @@ import {
 } from "#/components/ApprovalDialog";
 import { apiFetch } from "#/lib/api-fetch";
 import { useUiStore } from "#/stores/ui";
+import { AuditHistoryPanel } from "./AuditHistoryPanel";
 
 interface AiPanelProps {
 	sessionId: string;
@@ -32,6 +33,8 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [approval, setApproval] = useState<PendingApproval | null>(null);
+	const [showHistory, setShowHistory] = useState(false);
+	const queryClient = useQueryClient();
 
 	// 安装引导的「AI 对话式安装」：消费一次性预填提示（信号变化时读取，匹配本会话才预填）
 	const aiInstallSignal = useUiStore((s) => s.aiInstallSignal);
@@ -56,14 +59,19 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 		return () => clearInterval(timer);
 	}, [sessionId]);
 
-	/** 审批决策：批准（服务端重放执行原命令）或拒绝 */
+	/** 审批决策：批准（服务端重放执行原命令）或拒绝；完成后刷新审计历史 */
 	const decideApproval = useMutation({
 		mutationFn: async (decision: "approved" | "rejected") => {
 			await approvalSFn({
 				data: { requestId: approval?.requestId ?? "", decision },
 			});
 		},
-		onSuccess: () => setApproval(null),
+		onSuccess: () => {
+			setApproval(null);
+			void queryClient.invalidateQueries({
+				queryKey: ["audit-logs", sessionId],
+			});
+		},
 	});
 
 	/** 追加一条 assistant 流式消息的增量文本 */
@@ -122,6 +130,9 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 				))}
 			</div>
 
+			{/* 审计历史（docs 界面设计 §8.7：历史按钮展开） */}
+			{showHistory && <AuditHistoryPanel sessionId={sessionId} />}
+
 			{/* 输入区 */}
 			<div
 				className="flex shrink-0 gap-2 border-t p-2"
@@ -137,6 +148,18 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 					className="flex-1 rounded border px-2 py-1.5 text-sm outline-none disabled:opacity-60"
 					style={{ borderColor: "var(--rule)", color: "var(--ink)" }}
 				/>
+				<button
+					type="button"
+					onClick={() => setShowHistory((v) => !v)}
+					title={showHistory ? "收起审计日志" : "展开审计日志"}
+					className="rounded border px-2 py-1.5 text-sm disabled:opacity-50"
+					style={{
+						borderColor: "var(--rule)",
+						color: showHistory ? "var(--accent)" : "var(--muted)",
+					}}
+				>
+					🕘
+				</button>
 				<button
 					type="button"
 					onClick={() => void send()}

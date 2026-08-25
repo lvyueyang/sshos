@@ -7,6 +7,8 @@
 import type { Terminal as TerminalType } from "@xterm/xterm";
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "#/lib/api-fetch";
+import { recordTerminalCommandSFn } from "#/services/logs/logs.functions";
+import { createCommandTracker } from "./command-tracker";
 import {
 	closePtySFn,
 	createPtySFn,
@@ -77,6 +79,12 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 			// 直接 fire-and-forget 会并发乱序，这里用队列串行发送保证 PTY 输入顺序
 			const inputQueue: string[] = [];
 			let inputFlushing = false;
+			// 命令追踪：回车时记录用户执行的命令（terminal_command 审计，异步落库不阻塞输入）
+			const tracker = createCommandTracker((command) => {
+				void recordTerminalCommandSFn({ data: { sessionId, command } }).catch(
+					() => {},
+				);
+			});
 			const flushInput = async () => {
 				if (inputFlushing) return;
 				inputFlushing = true;
@@ -92,6 +100,7 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 				}
 			};
 			inputDisposable = term.onData((data) => {
+				tracker.handleInput(data);
 				if (!ptyIdRef.current) return;
 				inputQueue.push(data);
 				void flushInput();
@@ -115,7 +124,10 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 				for (;;) {
 					const { done, value } = await reader.read();
 					if (done) break;
-					term.write(decoder.decode(value, { stream: true }));
+					const text = decoder.decode(value, { stream: true });
+					// 输出流同时喂给命令追踪器（检测密码提示，抑制密码行落审计）
+					tracker.consumeOutput(text);
+					term.write(text);
 				}
 			} catch (err) {
 				if ((err as Error).name !== "AbortError") {

@@ -15,6 +15,7 @@ import { getApp } from "./registry";
 import type {
 	AppContext,
 	AppDefinition,
+	AuditRecord,
 	ContextMenuContext,
 	Disposable,
 	ShutdownReason,
@@ -27,7 +28,7 @@ export interface AppManagerDeps {
 		set(key: string, value: unknown): Promise<void>;
 	};
 	audit: {
-		record(entry: { command: string }): Promise<void>;
+		record(entry: AuditRecord): Promise<void>;
 	};
 	log: AppContext["log"];
 }
@@ -132,9 +133,12 @@ export class AppManager {
 				classify: { level: "safe" },
 			},
 			audit: {
-				record: (entry: Record<string, unknown>) =>
+				record: (entry: AuditRecord) =>
 					this.deps.audit.record({
-						command: String(entry.command ?? ""),
+						command: entry.command,
+						classification: entry.classification,
+						action: entry.action,
+						result: entry.result,
 					}),
 			},
 			settings: {
