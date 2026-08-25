@@ -63,4 +63,9 @@ export default {
 		passwordMismatch: "两次输入的密码不一致",
 		networkError: "网络错误，请检查服务是否可达",
 	},
+	bootstrap: {
+		initializing: "正在初始化服务…",
+		failed: "服务启动失败，请检查运行日志后重启",
+		reload: "重新加载",
+	},
 } as const;

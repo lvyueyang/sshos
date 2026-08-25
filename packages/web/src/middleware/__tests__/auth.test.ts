@@ -26,6 +26,10 @@ describe("isProtected（全局鉴权豁免）", () => {
 		expect(isProtected("/api/auth/status", "router")).toBe(false);
 	});
 
+	it("/api/bootstrap/* 初始化状态豁免", () => {
+		expect(isProtected("/api/bootstrap/status", "router")).toBe(false);
+	});
+
 	it("页面与静态资源豁免", () => {
 		expect(isProtected("/", "router")).toBe(false);
 		expect(isProtected("/assets/index-x.js", "router")).toBe(false);

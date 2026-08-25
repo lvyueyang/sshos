@@ -13,6 +13,7 @@ import {
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { AuthGate } from "#/components/AuthGate";
+import { BootstrapGate } from "#/components/BootstrapGate";
 import { Sidebar } from "#/components/Sidebar";
 import { TabBar } from "#/components/TabBar";
 import { useDesktopStore } from "#/stores/windows";
@@ -33,10 +34,13 @@ export const Route = createRootRoute({
 function RootComponent() {
 	return (
 		<RootDocument>
-			{/* 认证门：未配置显示设置向导 / 未登录显示登录表单 / 已登录进入桌面（D21） */}
-			<AuthGate>
-				<AppShell />
-			</AuthGate>
+			{/* 初始化载入门：bootstrap 完成后进入认证门（D21） */}
+			<BootstrapGate>
+				{/* 认证门：未配置显示设置向导 / 未登录显示登录表单 / 已登录进入桌面（D21） */}
+				<AuthGate>
+					<AppShell />
+				</AuthGate>
+			</BootstrapGate>
 		</RootDocument>
 	);
 }

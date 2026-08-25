@@ -15,6 +15,7 @@ import { Route as ApiAiChatRouteImport } from './routes/api/ai.chat'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAuthSetupRouteImport } from './routes/api/auth/setup'
 import { Route as ApiAuthStatusRouteImport } from './routes/api/auth/status'
+import { Route as ApiBootstrapStatusRouteImport } from './routes/api/bootstrap/status'
 import { Route as ApiMetricsSessionIdRouteImport } from './routes/api/metrics.$sessionId'
 import { Route as ApiPtySessionIdRouteImport } from './routes/api/pty.$sessionId'
 import { Route as ApiSftpDownloadRouteImport } from './routes/api/sftp/download'
@@ -50,6 +51,11 @@ const ApiAuthStatusRoute = ApiAuthStatusRouteImport.update({
   path: '/api/auth/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBootstrapStatusRoute = ApiBootstrapStatusRouteImport.update({
+  id: '/api/bootstrap/status',
+  path: '/api/bootstrap/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMetricsSessionIdRoute = ApiMetricsSessionIdRouteImport.update({
   id: '/api/metrics/$sessionId',
   path: '/api/metrics/$sessionId',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/setup': typeof ApiAuthSetupRoute
   '/api/auth/status': typeof ApiAuthStatusRoute
+  '/api/bootstrap/status': typeof ApiBootstrapStatusRoute
   '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
   '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
   '/api/sftp/download': typeof ApiSftpDownloadRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/setup': typeof ApiAuthSetupRoute
   '/api/auth/status': typeof ApiAuthStatusRoute
+  '/api/bootstrap/status': typeof ApiBootstrapStatusRoute
   '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
   '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
   '/api/sftp/download': typeof ApiSftpDownloadRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/setup': typeof ApiAuthSetupRoute
   '/api/auth/status': typeof ApiAuthStatusRoute
+  '/api/bootstrap/status': typeof ApiBootstrapStatusRoute
   '/api/metrics/$sessionId': typeof ApiMetricsSessionIdRoute
   '/api/pty/$sessionId': typeof ApiPtySessionIdRoute
   '/api/sftp/download': typeof ApiSftpDownloadRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/api/auth/login'
     | '/api/auth/setup'
     | '/api/auth/status'
+    | '/api/bootstrap/status'
     | '/api/metrics/$sessionId'
     | '/api/pty/$sessionId'
     | '/api/sftp/download'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/api/auth/login'
     | '/api/auth/setup'
     | '/api/auth/status'
+    | '/api/bootstrap/status'
     | '/api/metrics/$sessionId'
     | '/api/pty/$sessionId'
     | '/api/sftp/download'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/api/auth/login'
     | '/api/auth/setup'
     | '/api/auth/status'
+    | '/api/bootstrap/status'
     | '/api/metrics/$sessionId'
     | '/api/pty/$sessionId'
     | '/api/sftp/download'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthSetupRoute: typeof ApiAuthSetupRoute
   ApiAuthStatusRoute: typeof ApiAuthStatusRoute
+  ApiBootstrapStatusRoute: typeof ApiBootstrapStatusRoute
   ApiMetricsSessionIdRoute: typeof ApiMetricsSessionIdRoute
   ApiPtySessionIdRoute: typeof ApiPtySessionIdRoute
   ApiSftpDownloadRoute: typeof ApiSftpDownloadRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/bootstrap/status': {
+      id: '/api/bootstrap/status'
+      path: '/api/bootstrap/status'
+      fullPath: '/api/bootstrap/status'
+      preLoaderRoute: typeof ApiBootstrapStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/metrics/$sessionId': {
       id: '/api/metrics/$sessionId'
       path: '/api/metrics/$sessionId'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthSetupRoute: ApiAuthSetupRoute,
   ApiAuthStatusRoute: ApiAuthStatusRoute,
+  ApiBootstrapStatusRoute: ApiBootstrapStatusRoute,
   ApiMetricsSessionIdRoute: ApiMetricsSessionIdRoute,
   ApiPtySessionIdRoute: ApiPtySessionIdRoute,
   ApiSftpDownloadRoute: ApiSftpDownloadRoute,

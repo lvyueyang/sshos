@@ -33,7 +33,8 @@ export default defineConfig({
 		tanstackStart({
 			router: {
 				// 防御性忽略非路由文件（apps/ 不在 routes/ 下，本无路由生成冲突）
-				routeFileIgnorePattern: "\\.(functions|server|schemas)\\.ts$|__tests__",
+				routeFileIgnorePattern:
+					"\\.(functions|server|schemas).ts$|__tests__|helpers\\.ts$",
 			},
 			importProtection: {
 				client: {
