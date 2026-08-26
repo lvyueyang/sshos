@@ -4,7 +4,7 @@
  * xterm 为 CJS 且纯 client，组件内动态 import，SSR 不加载（避免模块 interop 问题）。
  */
 
-import type { Terminal as TerminalType } from "@xterm/xterm";
+import type { ITheme, Terminal as TerminalType } from "@xterm/xterm";
 import { useEffect, useRef, useState } from "react";
 import { recordTerminalCommandSFn } from "#/services/logs/logs.functions";
 import { createCommandTracker } from "./command-tracker";
@@ -18,6 +18,65 @@ import {
 
 interface TerminalWindowProps {
 	sessionId: string;
+}
+
+/** Monokai 兜底色板（与 globals.css .term-monokai 一致；CSS 变量缺失时回退） */
+const MONOKAI: Record<string, string> = {
+	"--terminal-bg": "#272822",
+	"--terminal-fg": "#f8f8f2",
+	"--terminal-ansi-0": "#272822",
+	"--terminal-ansi-1": "#f92672",
+	"--terminal-ansi-2": "#a6e22e",
+	"--terminal-ansi-3": "#f4bf75",
+	"--terminal-ansi-4": "#66d9ef",
+	"--terminal-ansi-5": "#ae81ff",
+	"--terminal-ansi-6": "#a1efe4",
+	"--terminal-ansi-7": "#f8f8f2",
+	"--terminal-ansi-8": "#75715e",
+	"--terminal-ansi-9": "#f92672",
+	"--terminal-ansi-10": "#a6e22e",
+	"--terminal-ansi-11": "#f4bf75",
+	"--terminal-ansi-12": "#66d9ef",
+	"--terminal-ansi-13": "#ae81ff",
+	"--terminal-ansi-14": "#a1efe4",
+	"--terminal-ansi-15": "#f9f8f5",
+};
+
+/** 从 CSS 变量读取 xterm 主题（docs/03 §5.10：终端色板独立，作用域 .term-monokai） */
+function readTerminalTheme(container: HTMLElement): ITheme {
+	const s = getComputedStyle(container);
+	const v = (name: string) => s.getPropertyValue(name).trim() || MONOKAI[name];
+	const ansi = (i: number) => v(`--terminal-ansi-${i}`);
+	return {
+		background: v("--terminal-bg"),
+		foreground: v("--terminal-fg"),
+		cursor: ansi(5),
+		black: ansi(0),
+		red: ansi(1),
+		green: ansi(2),
+		yellow: ansi(3),
+		blue: ansi(4),
+		magenta: ansi(5),
+		cyan: ansi(6),
+		white: ansi(7),
+		brightBlack: ansi(8),
+		brightRed: ansi(9),
+		brightGreen: ansi(10),
+		brightYellow: ansi(11),
+		brightBlue: ansi(12),
+		brightMagenta: ansi(13),
+		brightCyan: ansi(14),
+		brightWhite: ansi(15),
+	};
+}
+
+/** 从 CSS 变量读取终端字号（--terminal-font-size，默认 14px） */
+function readTerminalFontSize(container: HTMLElement): number {
+	const raw = getComputedStyle(container)
+		.getPropertyValue("--terminal-font-size")
+		.trim();
+	const px = Number.parseFloat(raw);
+	return Number.isFinite(px) && px > 0 ? px : 14;
 }
 
 export function TerminalWindow({ sessionId }: TerminalWindowProps) {
@@ -53,11 +112,11 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 			const { FitAddon } = fitMod;
 
 			const term = new Terminal({
-				fontFamily: "JetBrainsMono, monospace",
-				fontSize: 14,
+				fontFamily: "JetBrains Mono Variable, monospace",
+				fontSize: readTerminalFontSize(container),
 				cursorBlink: true,
 				scrollback: 10_000,
-				theme: { background: "#000000" },
+				theme: readTerminalTheme(container),
 			});
 			const fit = new FitAddon();
 			term.loadAddon(fit);
@@ -175,13 +234,10 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 	return (
 		<div
 			ref={containerRef}
-			className="h-full w-full overflow-hidden bg-black p-1"
+			className="term-monokai h-full w-full overflow-hidden p-1 [background:var(--terminal-bg)]"
 		>
 			{!connected && (
-				<div
-					className="absolute bottom-2 left-2 text-xs"
-					style={{ color: "var(--muted)" }}
-				>
+				<div className="absolute bottom-2 left-2 text-xs text-muted-foreground">
 					连接中…
 				</div>
 			)}

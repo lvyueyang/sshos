@@ -1,6 +1,7 @@
 /**
- * 侧栏：SSH 连接管理器（docs 界面设计 §2.2-2.4）。
- * 分组树展示连接列表，支持搜索过滤、新建/编辑连接、点击连接打开桌面 Tab。
+ * 侧栏：SSH 连接管理器（docs 界面设计 §2.2-2.4 / docs/07 §3）。
+ * 分组树展示连接列表，支持搜索过滤、新建/编辑连接、dnd 排序、点击连接打开桌面 Tab。
+ * 视觉走 shadcn + Remix 图标 + 语义 token（P1 迁移）。
  */
 
 import {
@@ -18,10 +19,36 @@ import {
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+	RiAddLine,
+	RiDeleteBin6Line,
+	RiDraggable,
+	RiEdit2Line,
+	RiFolder2Line,
+	RiFolderAddLine,
+	RiSearchLine,
+	RiSettings4Line,
+	RiTerminalLine,
+} from "@remixicon/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+	type ConnectionStatus,
+	StatusDot,
+} from "#/components/shared/StatusDot";
+import { Button } from "#/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "#/components/ui/dialog";
+import { Input } from "#/components/ui/input";
+import { Label } from "#/components/ui/label";
 import { useConnect } from "#/hooks/use-connect";
+import { cn } from "#/lib/utils";
 import {
 	createGroupSFn,
 	deleteGroupSFn,
@@ -34,38 +61,13 @@ import {
 import { useSettingsUiStore } from "#/stores/settings-ui";
 import { type ConnectionPrefill, useUiStore } from "#/stores/ui";
 import { useDesktopStore } from "#/stores/windows";
-import { ConnectionDrawer } from "./ConnectionDrawer";
+import { ConnectionDrawer } from "../ConnectionDrawer";
 
 const DEFAULT_GROUP_ID = "group:default";
 const DROP_GROUP_PREFIX = "drop-group:";
 
 type Group = Awaited<ReturnType<typeof listGroupsSFn>>[number];
 type Connection = Awaited<ReturnType<typeof listConnectionsSFn>>[number];
-
-/** 连接状态灯 */
-function StatusDot({
-	status,
-}: {
-	status: "online" | "offline" | "connecting" | "error";
-}) {
-	const color =
-		status === "online"
-			? "var(--accent)"
-			: status === "connecting"
-				? "var(--warn)"
-				: status === "error"
-					? "var(--danger)"
-					: "var(--muted)";
-	return (
-		<span
-			className="inline-block size-2 rounded-full"
-			style={{
-				background: color,
-				animation: status === "connecting" ? "pulse 1s infinite" : undefined,
-			}}
-		/>
-	);
-}
 
 export function Sidebar() {
 	const { t } = useTranslation();
@@ -200,44 +202,36 @@ export function Sidebar() {
 	};
 
 	return (
-		<aside
-			className="flex w-72 shrink-0 flex-col border-r"
-			style={{ background: "var(--bg2)", borderColor: "var(--rule)" }}
-		>
+		<aside className="flex w-72 shrink-0 flex-col border-r border-border bg-card">
 			{/* Logo */}
-			<div
-				className="flex h-12 shrink-0 items-center gap-2 px-4"
-				style={{ borderBottom: "1px solid var(--rule)" }}
-			>
-				<div
-					className="flex size-6 items-center justify-center rounded text-xs font-bold text-white"
-					style={{ background: "var(--accent)" }}
-				>
-					S
+			<div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
+				<div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
+					<RiTerminalLine className="size-3.5" />
 				</div>
-				<span className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
+				<span className="text-sm font-semibold text-foreground">
 					{t("app.name")}
 				</span>
 			</div>
 
 			{/* 搜索 */}
 			<div className="p-3">
-				<input
-					type="text"
-					value={search}
-					onChange={(e) => setSearch(e.target.value)}
-					placeholder={t("common.search")}
-					className="w-full rounded border bg-transparent px-2 py-1 text-sm outline-none"
-					style={{ borderColor: "var(--rule)", color: "var(--ink)" }}
-				/>
+				<div className="relative">
+					<RiSearchLine className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+					<Input
+						type="text"
+						value={search}
+						onChange={(e) => setSearch(e.target.value)}
+						placeholder={t("common.search")}
+						className="pl-8"
+					/>
+				</div>
 			</div>
 
 			{/* 连接树 */}
 			<div className="min-h-0 flex-1 overflow-y-auto px-2">
 				{actionError && (
 					<div
-						className="mb-2 rounded border px-2 py-1 text-xs"
-						style={{ borderColor: "var(--danger)", color: "var(--danger)" }}
+						className="mb-2 rounded-md border border-danger-border bg-danger-soft px-2 py-1 text-xs text-danger"
 						role="alert"
 					>
 						{actionError}
@@ -305,37 +299,35 @@ export function Sidebar() {
 			</div>
 
 			{/* 底部操作区 */}
-			<div
-				className="flex shrink-0 items-center gap-2 border-t p-3"
-				style={{ borderColor: "var(--rule)" }}
-			>
-				<button
+			<div className="flex shrink-0 items-center gap-2 border-t border-border p-3">
+				<Button
 					type="button"
 					onClick={() => setDrawer({ mode: "create" })}
-					className="flex flex-1 items-center justify-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium text-white"
-					style={{ background: "var(--accent)" }}
+					className="flex-1"
 				>
-					+ {t("sidebar.newConnection")}
-				</button>
-				<button
+					<RiAddLine className="size-4" />
+					{t("sidebar.newConnection")}
+				</Button>
+				<Button
 					type="button"
+					variant="outline"
+					size="icon"
 					title="新建分组"
+					aria-label="新建分组"
 					onClick={() => setGroupDialog({ mode: "create" })}
-					className="flex size-8 items-center justify-center rounded-md border text-sm"
-					style={{ color: "var(--muted)", borderColor: "var(--rule)" }}
 				>
-					+
-				</button>
-				<button
+					<RiFolderAddLine className="size-4" />
+				</Button>
+				<Button
 					type="button"
+					variant="outline"
+					size="icon"
 					title={t("sidebar.settings")}
 					aria-label={t("sidebar.settings")}
 					onClick={() => useSettingsUiStore.getState().openSettings()}
-					className="flex size-8 items-center justify-center rounded-md text-sm"
-					style={{ color: "var(--muted)", border: "1px solid var(--rule)" }}
 				>
-					⚙
-				</button>
+					<RiSettings4Line className="size-4" />
+				</Button>
 			</div>
 
 			{drawer && (
@@ -368,17 +360,16 @@ export function Sidebar() {
 	);
 }
 
+/** connectionStatus：按已打开 Tab 反查连接状态（未开 Tab = offline） */
 function connectionStatus(
 	connectionId: number,
-	tabs: Array<{
-		connectionId: number;
-		status: "connecting" | "online" | "offline" | "error";
-	}>,
-): "online" | "offline" | "connecting" | "error" {
+	tabs: Array<{ connectionId: number; status: ConnectionStatus }>,
+): ConnectionStatus {
 	const tab = tabs.find((t) => t.connectionId === connectionId);
 	return tab?.status ?? "offline";
 }
 
+/** 分组：可排序（分组拖拽排序）+ 可投放（连接拖入该组） */
 function SortableGroup({
 	group,
 	connections,
@@ -390,10 +381,7 @@ function SortableGroup({
 }: {
 	group: { id: number | null; name: string; color: string | null };
 	connections: Connection[];
-	tabs: Array<{
-		connectionId: number;
-		status: "connecting" | "online" | "offline" | "error";
-	}>;
+	tabs: Array<{ connectionId: number; status: ConnectionStatus }>;
 	onOpen: (connection: Connection) => void;
 	onEditConnection: (connection: Connection) => void;
 	onEditGroup?: () => void;
@@ -436,11 +424,10 @@ function SortableGroup({
 			/>
 			<div
 				ref={drop.setNodeRef}
-				className={`rounded-md border border-transparent py-0.5 transition-colors ${
-					drop.isOver
-						? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]"
-						: ""
-				}`}
+				className={cn(
+					"rounded-md border border-transparent py-0.5 transition-colors",
+					drop.isOver && "border-primary bg-primary/5",
+				)}
 			>
 				<SortableContext
 					items={visibleIds}
@@ -457,10 +444,7 @@ function SortableGroup({
 					))}
 				</SortableContext>
 				{connections.length === 0 && (
-					<div
-						className="mx-1 min-h-8 rounded border border-dashed px-2 py-2 text-center text-[10px]"
-						style={{ borderColor: "var(--rule)" }}
-					>
+					<div className="mx-1 min-h-8 rounded border border-dashed border-border px-2 py-2 text-center text-[10px] text-muted-foreground">
 						拖到这里移动连接
 					</div>
 				)}
@@ -469,6 +453,7 @@ function SortableGroup({
 	);
 }
 
+/** 连接项：可排序（组内拖拽排序） */
 function SortableConnection({
 	connection,
 	status,
@@ -476,7 +461,7 @@ function SortableConnection({
 	onEdit,
 }: {
 	connection: Connection;
-	status: "online" | "offline" | "connecting" | "error";
+	status: ConnectionStatus;
 	onOpen: () => void;
 	onEdit: () => void;
 }) {
@@ -484,7 +469,6 @@ function SortableConnection({
 	return (
 		<div
 			ref={sortable.setNodeRef}
-			className="group/connection"
 			style={{
 				transform: CSS.Transform.toString(sortable.transform),
 				transition: sortable.transition,
@@ -505,6 +489,7 @@ function SortableConnection({
 	);
 }
 
+/** 分组标题行：拖拽手柄 + 分组色条 + 名称/计数 + 编辑/删除（hover 显示） */
 function GroupHeader({
 	name,
 	count,
@@ -517,70 +502,68 @@ function GroupHeader({
 	count: number;
 	color?: string;
 	onEdit?: () => void;
-	dragHandleProps?: Record<string, unknown>;
 	onDelete?: () => void;
+	dragHandleProps?: Record<string, unknown>;
 }) {
 	return (
-		<div
-			className="group/header flex min-h-8 items-center gap-1.5 rounded-md px-2 py-1 transition-colors hover:bg-[var(--bg3)]"
-			style={{ color: "var(--muted)" }}
-		>
+		<div className="group/header flex min-h-8 items-center gap-1.5 rounded-md px-2 py-1 transition-colors hover:bg-muted">
 			<span
-				className="cursor-grab select-none text-[13px] leading-none opacity-50 active:cursor-grabbing"
+				className="cursor-grab select-none text-muted-foreground/50 active:cursor-grabbing"
 				aria-hidden="true"
 				style={{ touchAction: "none" }}
 				{...dragHandleProps}
 			>
-				⋮⋮
+				<RiDraggable className="size-3.5" />
 			</span>
-			<span
-				className="h-4 w-0.5 rounded-full"
-				style={{ background: color ?? "var(--muted)" }}
+			<RiFolder2Line
+				className="size-3.5 shrink-0"
+				style={color ? { color } : undefined}
 			/>
-			<span
-				className="text-[11px] font-semibold uppercase tracking-wide"
-				style={{ color: "var(--muted)" }}
-			>
+			<span className="truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
 				{name}
 			</span>
-			<span
-				className="rounded-full bg-[var(--bg3)] px-1.5 py-0.5 text-[10px] tabular-nums"
-				style={{ color: "var(--muted)" }}
-			>
+			<span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
 				{count}
 			</span>
-			{onEdit && (
-				<button
-					type="button"
-					title="编辑分组"
-					onClick={(event) => {
-						event.stopPropagation();
-						onEdit();
-					}}
-					className="ml-auto rounded px-1.5 py-0.5 text-xs opacity-0 transition-opacity group-hover/header:opacity-100 hover:bg-[var(--bg)]"
-					style={{ color: "var(--muted)" }}
-				>
-					✎
-				</button>
-			)}
-			{onDelete && (
-				<button
-					type="button"
-					title="删除分组"
-					onClick={(event) => {
-						event.stopPropagation();
-						onDelete();
-					}}
-					className="rounded px-1.5 py-0.5 text-xs opacity-0 transition-opacity group-hover/header:opacity-100 hover:bg-[var(--bg)]"
-					style={{ color: "var(--danger)" }}
-				>
-					×
-				</button>
-			)}
+			<div className="ml-auto flex items-center gap-0.5">
+				{onEdit && (
+					<Button
+						variant="ghost"
+						size="icon-xs"
+						type="button"
+						title="编辑分组"
+						aria-label="编辑分组"
+						className="text-muted-foreground opacity-0 transition-opacity group-hover/header:opacity-100"
+						onClick={(event) => {
+							event.stopPropagation();
+							onEdit();
+						}}
+					>
+						<RiEdit2Line className="size-3" />
+					</Button>
+				)}
+				{onDelete && (
+					<Button
+						variant="ghost"
+						size="icon-xs"
+						type="button"
+						title="删除分组"
+						aria-label="删除分组"
+						className="text-danger opacity-0 transition-opacity group-hover/header:opacity-100 hover:text-danger"
+						onClick={(event) => {
+							event.stopPropagation();
+							onDelete();
+						}}
+					>
+						<RiDeleteBin6Line className="size-3" />
+					</Button>
+				)}
+			</div>
 		</div>
 	);
 }
 
+/** 新建 / 编辑分组对话框（shadcn Dialog） */
 function GroupDialog({
 	mode,
 	group,
@@ -617,69 +600,52 @@ function GroupDialog({
 		}
 	};
 	return (
-		<div
-			className="fixed inset-0 z-50 flex items-center justify-center"
-			style={{ background: "rgba(0,0,0,0.6)" }}
-			onClick={onClose}
-		>
-			<div
-				className="w-80 rounded-lg border p-5"
-				style={{ background: "var(--bg2)", borderColor: "var(--rule)" }}
-				onClick={(event) => event.stopPropagation()}
-			>
-				<h2
-					className="mb-4 text-lg font-semibold"
-					style={{ color: "var(--ink)" }}
-				>
-					{mode === "create" ? "新建分组" : "编辑分组"}
-				</h2>
-				<label className="mb-3 block text-sm" style={{ color: "var(--muted)" }}>
-					名称
-					<input
-						value={name}
-						onChange={(event) => setName(event.target.value)}
-						className="mt-1 w-full rounded border bg-transparent px-2 py-1.5 outline-none"
-						style={{ borderColor: "var(--rule)", color: "var(--ink)" }}
-					/>
-				</label>
-				<label className="mb-3 block text-sm" style={{ color: "var(--muted)" }}>
-					颜色
-					<input
-						type="color"
-						value={color || "#6e7781"}
-						onChange={(event) => setColor(event.target.value)}
-						className="mt-1 block h-8 w-full"
-					/>
-				</label>
-				{error && (
-					<div className="mb-3 text-sm" style={{ color: "var(--danger)" }}>
-						{error}
+		<Dialog open onOpenChange={(open) => !open && onClose()}>
+			<DialogContent className="sm:max-w-sm">
+				<DialogHeader>
+					<DialogTitle>
+						{mode === "create" ? "新建分组" : "编辑分组"}
+					</DialogTitle>
+				</DialogHeader>
+				<div className="grid gap-4 py-2">
+					<div className="grid gap-1.5">
+						<Label htmlFor="group-name">名称</Label>
+						<Input
+							id="group-name"
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+						/>
 					</div>
-				)}
-				<div className="flex justify-end gap-2">
-					<button
-						type="button"
-						onClick={onClose}
-						className="rounded border px-3 py-1.5 text-sm"
-						style={{ borderColor: "var(--rule)", color: "var(--muted)" }}
-					>
+					<div className="grid gap-1.5">
+						<Label htmlFor="group-color">颜色</Label>
+						<input
+							id="group-color"
+							type="color"
+							value={color || "#6e7781"}
+							onChange={(e) => setColor(e.target.value)}
+							className="h-8 w-full"
+						/>
+					</div>
+					{error && <p className="text-sm text-danger">{error}</p>}
+				</div>
+				<DialogFooter>
+					<Button type="button" variant="outline" onClick={onClose}>
 						取消
-					</button>
-					<button
+					</Button>
+					<Button
 						type="button"
-						onClick={() => void handleSave()}
 						disabled={saving}
-						className="rounded px-3 py-1.5 text-sm text-white disabled:opacity-50"
-						style={{ background: "var(--accent)" }}
+						onClick={() => void handleSave()}
 					>
 						{saving ? "保存中…" : "保存"}
-					</button>
-				</div>
-			</div>
-		</div>
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 }
 
+/** 连接项：状态灯 + 名称/主机 + hover 编辑（左侧品牌色高亮条） */
 function ConnectionItem({
 	connection,
 	status,
@@ -688,70 +654,63 @@ function ConnectionItem({
 	dragHandleProps,
 }: {
 	connection: { id: number; title: string; host: string; username: string };
-	status: "online" | "offline" | "connecting" | "error";
+	status: ConnectionStatus;
 	onOpen: () => void;
 	onEdit: () => void;
 	dragHandleProps?: Record<string, unknown>;
 }) {
-	const [hovered, setHovered] = useState(false);
 	return (
 		<div
-			className="group flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 pl-4 transition-colors"
-			style={{
-				background: hovered ? "var(--bg3)" : "transparent",
-				borderLeft: hovered
-					? "2px solid var(--accent2)"
-					: "2px solid transparent",
-			}}
-			onMouseEnter={() => setHovered(true)}
-			onMouseLeave={() => setHovered(false)}
+			className="group flex min-h-11 cursor-pointer items-center gap-2 rounded-md border-l-2 border-transparent px-2 py-1.5 pl-3.5 transition-colors hover:border-primary hover:bg-muted"
 			onClick={onOpen}
 		>
 			<span
-				className="cursor-grab select-none text-xs leading-none opacity-0 transition-opacity group-hover:opacity-50 active:cursor-grabbing"
+				className="cursor-grab select-none text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
 				aria-hidden="true"
 				style={{ touchAction: "none" }}
 				{...dragHandleProps}
 			>
-				⠿
+				<RiDraggable className="size-3.5" />
 			</span>
 			<StatusDot status={status} />
 			<div className="min-w-0 flex-1">
-				<div className="truncate text-sm" style={{ color: "var(--ink)" }}>
+				<div className="truncate text-sm text-foreground">
 					{connection.title}
 				</div>
-				<div className="truncate text-xs" style={{ color: "var(--muted)" }}>
+				<div className="truncate text-xs text-muted-foreground">
 					{connection.host}
 				</div>
 			</div>
-			{hovered && (
-				<button
-					type="button"
-					title="编辑"
-					onClick={(e) => {
-						e.stopPropagation();
-						onEdit();
-					}}
-					className="rounded px-1 text-xs"
-					style={{ color: "var(--muted)" }}
-				>
-					✎
-				</button>
-			)}
+			<Button
+				variant="ghost"
+				size="icon-xs"
+				type="button"
+				title="编辑"
+				aria-label="编辑"
+				className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+				onClick={(e) => {
+					e.stopPropagation();
+					onEdit();
+				}}
+			>
+				<RiEdit2Line className="size-3" />
+			</Button>
 		</div>
 	);
 }
 
+/** 空状态：首次使用引导新建第一个连接（docs/03 §4.4） */
 function EmptyState({ onCreate }: { onCreate: () => void }) {
 	const { t } = useTranslation();
 	return (
 		<button
 			type="button"
 			onClick={onCreate}
-			className="m-2 flex w-[calc(100%-16px)] flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center"
-			style={{ borderColor: "var(--rule)", color: "var(--muted)" }}
+			className="m-2 flex w-[calc(100%-16px)] flex-col items-center gap-2 rounded-lg border border-dashed border-border p-6 text-center text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
 		>
-			<div className="text-2xl">+</div>
+			<div className="flex size-8 items-center justify-center rounded-full border border-border bg-muted">
+				<RiAddLine className="size-4" />
+			</div>
 			<div className="text-sm">{t("sidebar.addFirstConnection")}</div>
 			<div className="text-xs">{t("sidebar.supportsAuth")}</div>
 		</button>

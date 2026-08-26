@@ -11,11 +11,11 @@ export const TYPE_LABEL: Record<string, string> = {
 	policy_decision: "策略决策",
 };
 
-/** type → 徽标色（三类日志可辨识） */
+/** type → 徽标色（三类日志可辨识，语义 token） */
 export const TYPE_COLOR: Record<string, string> = {
-	ai_audit: "var(--accent2)",
-	terminal_command: "var(--ok)",
-	policy_decision: "var(--warn)",
+	ai_audit: "var(--info)",
+	terminal_command: "var(--success)",
+	policy_decision: "var(--warning)",
 };
 
 /** action → 中文展示（与 db log 表 action 枚举一致） */
@@ -30,8 +30,8 @@ export const ACTION_LABEL: Record<string, string> = {
 
 /** classification → 色标圆点（safe 绿 / review 黄 / block 红，其余灰） */
 export const LEVEL_COLOR: Record<string, string> = {
-	safe: "var(--ok)",
-	review: "var(--warn)",
+	safe: "var(--success)",
+	review: "var(--warning)",
 	block: "var(--danger)",
 };
 

@@ -1,10 +1,18 @@
 /**
  * 系统监控仪表盘（docs 界面设计 §7 / W2）：消费 metricsStreamSFn 快照流（SFn 流式），
- * 展示 CPU / 内存 / 磁盘 / 网络实时指标与最近 30 点趋势折线（SVG）。
+ * 展示 CPU / 内存 / 磁盘 / 网络实时指标与最近 30 点趋势折线（TanStack Charts）。
  * 流式数据仅组件内消费，不进全局 store（决策记录 D10），复用 useMetricsStream hook。
  */
 
+import { defineChart, lineY } from "@tanstack/charts";
+import { Chart } from "@tanstack/charts/react";
+import { scaleLinear } from "@tanstack/charts/scales/linear";
+import { useMemo } from "react";
+import { Card, CardContent } from "#/components/ui/card";
+import { Progress } from "#/components/ui/progress";
 import { useMetricsStream } from "#/hooks/use-metrics-stream";
+import { formatBytes, formatRate, usagePct } from "#/lib/format";
+import { useThemeStore } from "#/stores/theme";
 
 interface MonitorDashboardProps {
 	sessionId: string;
@@ -18,15 +26,9 @@ export function MonitorDashboard({ sessionId }: MonitorDashboardProps) {
 
 	return (
 		<div className="flex h-full flex-col gap-3 overflow-y-auto bg-transparent p-3 text-sm">
-			{error && (
-				<div className="text-xs" style={{ color: "var(--danger)" }}>
-					{error}
-				</div>
-			)}
+			{error && <div className="text-xs text-danger">{error}</div>}
 			{!latest && !error && (
-				<div className="text-xs" style={{ color: "var(--muted)" }}>
-					等待指标采样…
-				</div>
+				<div className="text-xs text-muted-foreground">等待指标采样…</div>
 			)}
 
 			{latest && (
@@ -60,27 +62,26 @@ export function MonitorDashboard({ sessionId }: MonitorDashboardProps) {
 					</div>
 
 					{/* CPU / 内存趋势 */}
-					<div
-						className="rounded border p-2"
-						style={{ borderColor: "var(--rule)" }}
-					>
-						<div className="mb-1 text-xs" style={{ color: "var(--muted)" }}>
-							CPU / 内存使用率（近 {points.length} 点）
-						</div>
-						<TrendChart
-							points={points.map((p) => ({
-								cpu: p.cpu.usage,
-								mem: usagePct(p.memory),
-							}))}
-						/>
-					</div>
+					<Card>
+						<CardContent className="p-2">
+							<div className="mb-1 text-xs text-muted-foreground">
+								CPU / 内存使用率（近 {points.length} 点）
+							</div>
+							<TrendChart
+								points={points.map((p) => ({
+									cpu: p.cpu.usage,
+									mem: usagePct(p.memory),
+								}))}
+							/>
+						</CardContent>
+					</Card>
 				</>
 			)}
 		</div>
 	);
 }
 
-/** 单个指标卡片：名称 + 数值 + 副标题 + 容量条 */
+/** 单个指标卡片：名称 + 数值 + 副标题 + 容量进度条（shadcn Card/Progress） */
 function MetricCard({
 	label,
 	value,
@@ -93,121 +94,64 @@ function MetricCard({
 	percent: number;
 }) {
 	return (
-		<div className="rounded border p-3" style={{ borderColor: "var(--rule)" }}>
-			<div className="text-xs" style={{ color: "var(--muted)" }}>
-				{label}
-			</div>
-			<div
-				className="mt-1 text-xl font-semibold tabular-nums"
-				style={{ color: "var(--ink)" }}
-			>
-				{value}
-			</div>
-			<div className="mt-1 truncate text-xs" style={{ color: "var(--muted)" }}>
-				{sub}
-			</div>
-			{percent > 0 && (
-				<div
-					className="mt-2 h-1.5 overflow-hidden rounded"
-					style={{ background: "var(--bg3)" }}
-				>
-					<div
-						className="h-full"
-						style={{
-							width: `${Math.min(percent, 100)}%`,
-							background: "var(--accent)",
-						}}
-					/>
+		<Card>
+			<CardContent className="p-3">
+				<div className="text-xs text-muted-foreground">{label}</div>
+				<div className="mt-1 text-xl font-semibold tabular-nums text-foreground">
+					{value}
 				</div>
-			)}
-		</div>
+				<div className="mt-1 truncate text-xs text-muted-foreground">{sub}</div>
+				{percent > 0 && <Progress value={percent} className="mt-2 h-1.5" />}
+			</CardContent>
+		</Card>
 	);
 }
 
-/** SVG 趋势折线：CPU（accent）与内存（accent2）双序列 */
+/** 趋势折线（TanStack Charts）：CPU（chart-1）与内存（chart-2）双序列，随主题取色 */
 function TrendChart({
 	points,
 }: {
 	points: Array<{ cpu: number; mem: number }>;
 }) {
-	const W = 560;
-	const H = 120;
-	const PAD = 4;
-	const max = 100;
+	// 主题切换时重新取色（CSS 变量在浏览器解析；SSR 下 points 为空不进入）
+	const scheme = useThemeStore((s) => s.scheme);
+	const rows = useMemo(
+		() => points.map((p, i) => ({ i, cpu: p.cpu, mem: p.mem })),
+		[points],
+	);
+	const definition = useMemo(() => {
+		if (rows.length < 2) return null;
+		const root = getComputedStyle(document.documentElement);
+		// 主题切换时重新取色；CSS 变量解析兜底用 scheme 对应色（docs/07 §2 双主题）
+		const cpu =
+			root.getPropertyValue("--chart-1").trim() ||
+			(scheme === "dark" ? "#3fb950" : "#1a7f37");
+		const mem =
+			root.getPropertyValue("--chart-2").trim() ||
+			(scheme === "dark" ? "#58a6ff" : "#0969da");
+		return defineChart({
+			marks: [
+				lineY(rows, { x: "i", y: "cpu", stroke: cpu }),
+				lineY(rows, { x: "i", y: "mem", stroke: mem }),
+			],
+			x: { scale: scaleLinear },
+			y: { scale: scaleLinear, nice: true, grid: true },
+			svgAnimation: true,
+		});
+	}, [rows, scheme]);
 
-	if (points.length < 2) {
+	if (!definition) {
 		return (
-			<div
-				className="flex h-[120px] items-center justify-center text-xs"
-				style={{ color: "var(--muted)" }}
-			>
+			<div className="flex h-[120px] items-center justify-center text-xs text-muted-foreground">
 				采集中…
 			</div>
 		);
 	}
-
-	const toXY = (fn: (p: { cpu: number; mem: number }) => number, i: number) => {
-		const x = PAD + (i * (W - PAD * 2)) / (points.length - 1);
-		const y = H - PAD - (Math.min(fn(points[i]), max) / max) * (H - PAD * 2);
-		return `${x},${y}`;
-	};
-
-	const cpuLine = points.map((_, i) => toXY((p) => p.cpu, i)).join(" ");
-	const memLine = points.map((_, i) => toXY((p) => p.mem, i)).join(" ");
-
 	return (
-		<svg
-			viewBox={`0 0 ${W} ${H}`}
-			className="h-[120px] w-full"
-			preserveAspectRatio="none"
-			role="img"
-			aria-label="CPU 与内存使用率趋势"
-		>
-			{[25, 50, 75].map((v) => (
-				<line
-					key={v}
-					x1={PAD}
-					x2={W - PAD}
-					y1={(v / 100) * (H - PAD * 2) + PAD}
-					y2={(v / 100) * (H - PAD * 2) + PAD}
-					stroke="var(--rule)"
-					strokeWidth="0.5"
-				/>
-			))}
-			<polyline
-				points={memLine}
-				fill="none"
-				stroke="var(--accent2)"
-				strokeWidth="1.5"
-			/>
-			<polyline
-				points={cpuLine}
-				fill="none"
-				stroke="var(--accent)"
-				strokeWidth="1.5"
-			/>
-		</svg>
+		<Chart
+			definition={definition}
+			height={120}
+			ariaLabel="CPU 与内存使用率趋势"
+		/>
 	);
-}
-
-/** 内存 / 磁盘使用率百分比（total 为 0 时返回 0） */
-function usagePct(v: { total: number; used: number }): number {
-	return v.total > 0 ? Math.round((v.used / v.total) * 100) : 0;
-}
-
-/** 字节数转可读文本（对齐 files 工具，监控侧复用等价实现） */
-function formatBytes(bytes?: number): string {
-	if (!bytes || bytes === 0) return "0 B";
-	const units = ["B", "KB", "MB", "GB", "TB"];
-	const idx = Math.min(
-		Math.floor(Math.log(bytes) / Math.log(1024)),
-		units.length - 1,
-	);
-	const value = bytes / 1024 ** idx;
-	return `${value.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
-}
-
-/** 速率格式化：B/s → KB/s / MB/s */
-function formatRate(bytesPerSec: number): string {
-	return `${formatBytes(bytesPerSec)}/s`;
 }

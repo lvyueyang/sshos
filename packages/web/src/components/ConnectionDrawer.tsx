@@ -3,9 +3,11 @@
  * 右抽屉 420px，遮罩 60%；支持测试连接（5s 超时三色横幅反馈）。
  */
 
+import { RiLoader4Line } from "@remixicon/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
 	createConnectionSFn,
 	listGroupsSFn,
@@ -155,8 +157,12 @@ export function ConnectionDrawer({
 			} else if (connectionId) {
 				await updateConnectionSFn({ data: { id: connectionId, input: form } });
 			}
+			toast.success(mode === "create" ? "连接已创建" : "连接已保存");
 			onSaved();
 		} catch (err) {
+			// 禁止静默吞错：保存失败必须可见（docs/07 §6）
+			const msg = err instanceof Error ? err.message : String(err);
+			toast.error(`保存连接失败：${msg}`);
 			console.error("保存连接失败:", err);
 		} finally {
 			setSaving(false);
@@ -308,7 +314,14 @@ export function ConnectionDrawer({
 						className="flex-1 rounded-md border px-3 py-2 text-sm disabled:opacity-50"
 						style={{ borderColor: "var(--rule)", color: "var(--ink)" }}
 					>
-						{testing ? "测试中…" : "测试连接"}
+						{testing ? (
+							<span className="inline-flex items-center gap-1.5">
+								<RiLoader4Line className="size-3.5 animate-spin" />
+								测试中…
+							</span>
+						) : (
+							"测试连接"
+						)}
 					</button>
 					<button
 						type="button"
@@ -317,7 +330,14 @@ export function ConnectionDrawer({
 						className="flex-1 rounded-md px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
 						style={{ background: "var(--accent)" }}
 					>
-						{saving ? "保存中…" : t("common.save")}
+						{saving ? (
+							<span className="inline-flex items-center gap-1.5">
+								<RiLoader4Line className="size-3.5 animate-spin" />
+								保存中…
+							</span>
+						) : (
+							t("common.save")
+						)}
 					</button>
 					<button
 						type="button"

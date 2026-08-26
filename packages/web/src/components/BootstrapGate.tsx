@@ -1,11 +1,13 @@
 /**
  * 初始化载入门（bootstrap）：轮询 bootstrapStatusSFn，running 时显示初始化载入界面
  * （开机动画），ready 后进入内容（AuthGate）；服务 fail-fast 退出（轮询持续失败）时
- * 显示启动失败提示与重新加载入口。
+ * 显示启动失败提示与重新加载入口。视觉走语义 token（docs/07 §2）。
  */
 
+import { RiLoader4Line } from "@remixicon/react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "#/components/ui/button";
 import { bootstrapStatusSFn } from "#/services/bootstrap/bootstrap.functions";
 
 type GateState = "loading" | "ready" | "failed";
@@ -50,40 +52,23 @@ export function BootstrapGate({ children }: { children: ReactNode }) {
 	if (state === "ready") return <>{children}</>;
 	if (state === "failed") {
 		return (
-			<main
-				className="flex h-full items-center justify-center"
-				style={{ background: "var(--desktop-bg)" }}
-			>
-				<div
-					className="flex flex-col items-center gap-4 rounded-lg border p-8 text-center"
-					style={{ background: "var(--card)", borderColor: "var(--rule)" }}
-				>
-					<h1 className="text-lg font-bold" style={{ color: "var(--ink)" }}>
+			<main className="flex h-full items-center justify-center [background:var(--desktop-bg)]">
+				<div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-card p-8 text-center shadow-md">
+					<h1 className="text-lg font-bold text-foreground">
 						{t("bootstrap.failed")}
 					</h1>
-					<button
-						type="button"
-						onClick={() => window.location.reload()}
-						className="rounded-md px-4 py-2 text-sm font-medium text-white"
-						style={{ background: "var(--accent)" }}
-					>
+					<Button type="button" onClick={() => window.location.reload()}>
 						{t("bootstrap.reload")}
-					</button>
+					</Button>
 				</div>
 			</main>
 		);
 	}
 	return (
-		<main
-			className="flex h-full items-center justify-center"
-			style={{ background: "var(--desktop-bg)" }}
-		>
+		<main className="flex h-full items-center justify-center [background:var(--desktop-bg)]">
 			<div className="flex flex-col items-center gap-4">
-				<div
-					className="size-10 animate-spin rounded-full border-2 border-t-transparent"
-					style={{ borderColor: "var(--accent)" }}
-				/>
-				<p className="text-sm" style={{ color: "var(--muted)" }}>
+				<RiLoader4Line className="size-10 animate-spin text-primary" />
+				<p className="text-sm text-muted-foreground">
 					{t("bootstrap.initializing")}
 				</p>
 			</div>

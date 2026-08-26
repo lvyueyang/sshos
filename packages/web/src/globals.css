@@ -1,51 +1,267 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/instrument-sans";
+@import "@fontsource-variable/jetbrains-mono";
 
 /*
- * 项目语义 token 与 shadcn design token 映射（docs 界面设计 §1.2）
- * 明暗双主题：:root（light）/ .dark（dark），切换只改根元素 class
+ * 主题 token 单一事实（docs/06 §4 / docs/07 §2）：
+ * - 全量 shadcn design token（:root=light / .dark=dark）+ 项目语义色家族（success/warning/danger/info）
+ *   + 数据可视化色板（chart-1..5）+ app 品牌色（app-*）+ 终端独立色板（--terminal-*）
+ * - 形状（--radius 派生 rounded-*）、间距（--spacing 密度）、字号（根 font-size 字阶）均支持主题/偏好覆盖
+ * - 旧语义别名（--bg/--bg2/--ink/--rule/--accent 等）保留为兼容层，组件迁移到语义类后移除（P4）
  */
-:root {
-	--bg: #ffffff;
-	--bg2: #f6f8fa;
-	--bg3: #eaeef2;
-	--desktop-bg: linear-gradient(135deg, #e8ecf2, #dfe6ee, #cfd9e6);
-	--ink: #24292f;
-	--muted: #59636e;
-	--rule: #d0d7de;
-	--accent: #1a7f37;
-	--accent2: #0969da;
-	--warn: #9a6700;
-	--danger: #cf222e;
-	--ok: #1a7f37;
-	--ok-bg: #dcf4e0;
 
-	--background: var(--bg);
-	--foreground: var(--ink);
-	--card: var(--bg2);
-	--border: var(--rule);
-	--primary: var(--accent);
+:root {
+	/* ---- 形状（圆角）---- */
+	--radius: 0.5rem;
+
+	/* ---- 动效令牌 ---- */
+	--duration-fast: 120ms;
+	--duration-base: 200ms;
+	--duration-slow: 300ms;
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
+	--ease-emphasized: cubic-bezier(0.2, 0, 0, 1.4);
+
+	/* ---- 阴影层级 ---- */
+	--shadow-xs: 0 1px 2px rgb(0 0 0 / 0.06);
+	--shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.1);
+	--shadow-md: 0 2px 4px rgb(0 0 0 / 0.08), 0 4px 8px rgb(0 0 0 / 0.1);
+	--shadow-lg: 0 4px 6px rgb(0 0 0 / 0.08), 0 10px 20px rgb(0 0 0 / 0.16);
+
+	/* ================== light ================== */
+	--background: #ffffff;
+	--foreground: #24292f;
+	--card: #f6f8fa;
+	--card-foreground: #24292f;
+	--popover: #f6f8fa;
+	--popover-foreground: #24292f;
+	--primary: #1a7f37;
+	--primary-foreground: #ffffff;
+	--secondary: #eaeef2;
+	--secondary-foreground: #24292f;
+	--muted-foreground: #59636e;
+	--accent-foreground: #24292f;
+	--destructive: #cf222e;
+	--destructive-foreground: #ffffff;
+	--border: #d0d7de;
+	--input: #d0d7de;
+	--ring: #0969da;
+
+	/* ---- 项目语义色家族 ---- */
+	--success: #1a7f37;
+	--success-foreground: #ffffff;
+	--success-soft: color-mix(in srgb, var(--success) 14%, transparent);
+	--success-border: color-mix(in srgb, var(--success) 35%, transparent);
+	--warning: #9a6700;
+	--warning-foreground: #3d2900;
+	--warning-soft: color-mix(in srgb, var(--warning) 16%, transparent);
+	--warning-border: color-mix(in srgb, var(--warning) 40%, transparent);
+	--danger: #cf222e;
+	--danger-foreground: #ffffff;
+	--danger-soft: color-mix(in srgb, var(--danger) 12%, transparent);
+	--danger-border: color-mix(in srgb, var(--danger) 35%, transparent);
+	--info: #0969da;
+	--info-foreground: #ffffff;
+	--info-soft: color-mix(in srgb, var(--info) 12%, transparent);
+	--info-border: color-mix(in srgb, var(--info) 35%, transparent);
+
+	/* ---- 数据可视化色板 ---- */
+	--chart-1: #1a7f37;
+	--chart-2: #0969da;
+	--chart-3: #9a6700;
+	--chart-4: #8250df;
+	--chart-5: #cf222e;
+
+	/* ---- app 品牌色（桌面图标配色，替换 ICON_COLOR 硬编码）---- */
+	--app-terminal: #1a7f37;
+	--app-files: #0969da;
+	--app-monitor: #1e7f99;
+	--app-ai: #8250df;
+	--app-logs: #9a6700;
+	--app-clock: #59636e;
+
+	/* ---- 旧语义别名（兼容引用语义 token，避免双值漂移；组件迁移到语义类后移除）---- */
+	--bg: var(--background);
+	--bg2: var(--card);
+	--bg3: var(--secondary);
+	--ink: var(--foreground);
+	--muted: var(--muted-foreground);
+	--rule: var(--border);
+	--accent: var(--primary);
+	--accent2: var(--info);
+	--warn: var(--warning);
+	--ok: var(--success);
+	--ok-bg: var(--success-soft);
+	--desktop-bg: linear-gradient(135deg, #e8ecf2, #dfe6ee, #cfd9e6);
 }
 
 .dark {
-	--bg: #0d1117;
-	--bg2: #161b22;
-	--bg3: #1c2128;
-	--desktop-bg: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
-	--ink: #e6edf3;
-	--muted: #8b949e;
-	--rule: #30363d;
-	--accent: #3fb950;
-	--accent2: #58a6ff;
-	--warn: #d29922;
-	--danger: #f85149;
-	--ok: #3fb950;
-	--ok-bg: #12281a;
+	/* ================== dark（GitHub Dark 基底） ================== */
+	--background: #0d1117;
+	--foreground: #e6edf3;
+	--card: #161b22;
+	--card-foreground: #e6edf3;
+	--popover: #161b22;
+	--popover-foreground: #e6edf3;
+	--primary: #3fb950;
+	--primary-foreground: #0d1117;
+	--secondary: #1c2128;
+	--secondary-foreground: #e6edf3;
+	--muted-foreground: #8b949e;
+	--accent-foreground: #e6edf3;
+	--destructive: #f85149;
+	--destructive-foreground: #0d1117;
+	--border: #30363d;
+	--input: #30363d;
+	--ring: #58a6ff;
 
-	--background: var(--bg);
-	--foreground: var(--ink);
-	--card: var(--bg2);
-	--border: var(--rule);
-	--primary: var(--accent);
+	--success: #3fb950;
+	--success-foreground: #0d1117;
+	--warning: #d29922;
+	--warning-foreground: #0d1117;
+	--danger: #f85149;
+	--danger-foreground: #0d1117;
+	--info: #58a6ff;
+	--info-foreground: #0d1117;
+
+	--chart-1: #3fb950;
+	--chart-2: #58a6ff;
+	--chart-3: #d29922;
+	--chart-4: #bc8cff;
+	--chart-5: #f85149;
+
+	--app-terminal: #3fb950;
+	--app-files: #58a6ff;
+	--app-monitor: #58c4dd;
+	--app-ai: #bc8cff;
+	--app-logs: #d29922;
+	--app-clock: #8b949e;
+
+	--bg: var(--background);
+	--bg2: var(--card);
+	--bg3: var(--secondary);
+	--ink: var(--foreground);
+	--muted: var(--muted-foreground);
+	--rule: var(--border);
+	--accent: var(--primary);
+	--accent2: var(--info);
+	--warn: var(--warning);
+	--ok: var(--success);
+	--ok-bg: var(--success-soft);
+	--desktop-bg: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+}
+
+/* ---- 间距密度（data-density）与字阶（data-font-scale）---- */
+html[data-density="compact"] {
+	--spacing: 0.2rem;
+}
+html[data-density="comfortable"] {
+	--spacing: 0.3rem;
+}
+html[data-font-scale="sa"] {
+	font-size: 14px;
+}
+html[data-font-scale="lg"] {
+	font-size: 17px;
+}
+html[data-font-scale="xl"] {
+	font-size: 19px;
+}
+
+/* ---- 终端独立色板（Monokai，docs/03 §5.10 双主题分离；作用域在终端窗口容器）---- */
+.term-monokai {
+	--terminal-bg: #272822;
+	--terminal-fg: #f8f8f2;
+	--terminal-ansi-0: #272822;
+	--terminal-ansi-1: #f92672;
+	--terminal-ansi-2: #a6e22e;
+	--terminal-ansi-3: #f4bf75;
+	--terminal-ansi-4: #66d9ef;
+	--terminal-ansi-5: #ae81ff;
+	--terminal-ansi-6: #a1efe4;
+	--terminal-ansi-7: #f8f8f2;
+	--terminal-ansi-8: #75715e;
+	--terminal-ansi-9: #f92672;
+	--terminal-ansi-10: #a6e22e;
+	--terminal-ansi-11: #f4bf75;
+	--terminal-ansi-12: #66d9ef;
+	--terminal-ansi-13: #ae81ff;
+	--terminal-ansi-14: #a1efe4;
+	--terminal-ansi-15: #f9f8f5;
+	--terminal-font-size: 14px;
+}
+
+/* ---- Tailwind 语义类映射（@theme inline 保留运行时变量引用，主题切换只改根属性）---- */
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--bg3);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--bg3);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
+	--color-success-soft: var(--success-soft);
+	--color-success-border: var(--success-border);
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
+	--color-warning-soft: var(--warning-soft);
+	--color-warning-border: var(--warning-border);
+	--color-danger: var(--danger);
+	--color-danger-foreground: var(--danger-foreground);
+	--color-danger-soft: var(--danger-soft);
+	--color-danger-border: var(--danger-border);
+	--color-info: var(--info);
+	--color-info-foreground: var(--info-foreground);
+	--color-info-soft: var(--info-soft);
+	--color-info-border: var(--info-border);
+
+	--color-chart-1: var(--chart-1);
+	--color-chart-2: var(--chart-2);
+	--color-chart-3: var(--chart-3);
+	--color-chart-4: var(--chart-4);
+	--color-chart-5: var(--chart-5);
+
+	--color-app-terminal: var(--app-terminal);
+	--color-app-files: var(--app-files);
+	--color-app-monitor: var(--app-monitor);
+	--color-app-ai: var(--app-ai);
+	--color-app-logs: var(--app-logs);
+	--color-app-clock: var(--app-clock);
+
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+
+	--shadow-xs: var(--shadow-xs);
+	--shadow-sm: var(--shadow-sm);
+	--shadow-md: var(--shadow-md);
+	--shadow-lg: var(--shadow-lg);
+
+	--font-sans:
+		"Instrument Sans Variable", ui-sans-serif, system-ui, -apple-system,
+		"Segoe UI", Roboto, sans-serif;
+	--font-mono:
+		"JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+	--text-2xs: 0.625rem;
+	--text-h1: 2rem;
+	--text-h2: 1.625rem;
 }
 
 html,
@@ -56,14 +272,43 @@ body,
 
 body {
 	margin: 0;
-	background: var(--bg);
-	color: var(--ink);
+	background: var(--background);
+	color: var(--foreground);
 	font-family:
-		ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+		"Instrument Sans Variable", ui-sans-serif, system-ui, -apple-system,
+		"Segoe UI", Roboto, sans-serif;
+	font-size: 1rem;
 	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
 }
 
-/* 表单控件统一 token 样式（连接表单 / 设置面板） */
+/* 统一滚动条样式（docs/07 §9） */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+::-webkit-scrollbar-thumb {
+	background: var(--border);
+	border-radius: 9999px;
+	border: 2px solid var(--background);
+}
+::-webkit-scrollbar-thumb:hover {
+	background: var(--muted-foreground);
+}
+
+::selection {
+	background: var(--ring);
+	color: var(--ring-foreground, var(--background));
+}
+
+/* 表单控件统一 token 样式（兼容层：迁移到 shadcn Input/Select 后移除，P1/P2） */
 input,
 select,
 textarea {

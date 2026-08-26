@@ -1,43 +1,30 @@
 /**
- * 文件管理器操作对话框：新建目录 / 重命名 / 删除确认。
+ * 文件管理器操作对话框（docs/07 §3）：新建目录 / 重命名用 shadcn Dialog，删除确认用 shadcn AlertDialog。
  * 确认后回调由 FileManager 调对应 SFn（写操作自动过 Policy Engine）。
  */
 
 import { useState } from "react";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "#/components/ui/alert-dialog";
+import { Button } from "#/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "#/components/ui/dialog";
+import { Input } from "#/components/ui/input";
+import { Label } from "#/components/ui/label";
 import type { MenuItem } from "./FileManagerMenu";
-
-/** 基础弹层：遮罩 + 居中卡片 */
-function Modal({
-	title,
-	children,
-	onClose,
-}: {
-	title: string;
-	children: React.ReactNode;
-	onClose: () => void;
-}) {
-	return (
-		<div
-			className="fixed inset-0 z-50 flex items-center justify-center"
-			style={{ background: "rgba(0,0,0,0.6)" }}
-			onClick={onClose}
-		>
-			<div
-				className="w-80 rounded-lg border p-4"
-				style={{ background: "var(--bg2)", borderColor: "var(--rule)" }}
-				onClick={(e) => e.stopPropagation()}
-			>
-				<h3
-					className="mb-3 text-sm font-semibold"
-					style={{ color: "var(--ink)" }}
-				>
-					{title}
-				</h3>
-				{children}
-			</div>
-		</div>
-	);
-}
 
 /** 新建目录：输入目录名，确认后在当前目录下创建 */
 export function MkdirDialog({
@@ -51,39 +38,40 @@ export function MkdirDialog({
 }) {
 	const [name, setName] = useState("");
 	return (
-		<Modal title="新建目录" onClose={onClose}>
-			<input
-				type="text"
-				autoFocus
-				value={name}
-				onChange={(e) => setName(e.target.value)}
-				onKeyDown={(e) =>
-					e.key === "Enter" && name.trim() && onConfirm(name.trim())
-				}
-				placeholder={`在 ${cwd} 下创建`}
-				className="mb-3 w-full rounded border px-2 py-1.5 text-sm outline-none"
-				style={{ borderColor: "var(--rule)", color: "var(--ink)" }}
-			/>
-			<div className="flex justify-end gap-2">
-				<button
-					type="button"
-					onClick={onClose}
-					className="rounded border px-3 py-1.5 text-xs"
-					style={{ borderColor: "var(--rule)", color: "var(--muted)" }}
-				>
-					取消
-				</button>
-				<button
-					type="button"
-					disabled={!name.trim()}
-					onClick={() => onConfirm(name.trim())}
-					className="rounded px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-					style={{ background: "var(--accent)" }}
-				>
-					创建
-				</button>
-			</div>
-		</Modal>
+		<Dialog open onOpenChange={(open) => !open && onClose()}>
+			<DialogContent className="sm:max-w-sm">
+				<DialogHeader>
+					<DialogTitle>新建目录</DialogTitle>
+				</DialogHeader>
+				<div className="grid gap-1.5 py-2">
+					<Label htmlFor="mkdir-name" className="text-muted-foreground">
+						在 {cwd} 下创建
+					</Label>
+					<Input
+						id="mkdir-name"
+						autoFocus
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						onKeyDown={(e) =>
+							e.key === "Enter" && name.trim() && onConfirm(name.trim())
+						}
+						placeholder="目录名"
+					/>
+				</div>
+				<DialogFooter>
+					<Button type="button" variant="outline" onClick={onClose}>
+						取消
+					</Button>
+					<Button
+						type="button"
+						disabled={!name.trim()}
+						onClick={() => onConfirm(name.trim())}
+					>
+						创建
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 }
 
@@ -99,42 +87,43 @@ export function RenameDialog({
 }) {
 	const [name, setName] = useState(item.name);
 	return (
-		<Modal title="重命名" onClose={onClose}>
-			<input
-				type="text"
-				autoFocus
-				value={name}
-				onChange={(e) => setName(e.target.value)}
-				onKeyDown={(e) =>
-					e.key === "Enter" && name.trim() && onConfirm(name.trim())
-				}
-				className="mb-3 w-full rounded border px-2 py-1.5 text-sm outline-none"
-				style={{ borderColor: "var(--rule)", color: "var(--ink)" }}
-			/>
-			<div className="flex justify-end gap-2">
-				<button
-					type="button"
-					onClick={onClose}
-					className="rounded border px-3 py-1.5 text-xs"
-					style={{ borderColor: "var(--rule)", color: "var(--muted)" }}
-				>
-					取消
-				</button>
-				<button
-					type="button"
-					disabled={!name.trim()}
-					onClick={() => onConfirm(name.trim())}
-					className="rounded px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-					style={{ background: "var(--accent)" }}
-				>
-					确定
-				</button>
-			</div>
-		</Modal>
+		<Dialog open onOpenChange={(open) => !open && onClose()}>
+			<DialogContent className="sm:max-w-sm">
+				<DialogHeader>
+					<DialogTitle>重命名</DialogTitle>
+				</DialogHeader>
+				<div className="grid gap-1.5 py-2">
+					<Label htmlFor="rename-name" className="text-muted-foreground">
+						新名称
+					</Label>
+					<Input
+						id="rename-name"
+						autoFocus
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						onKeyDown={(e) =>
+							e.key === "Enter" && name.trim() && onConfirm(name.trim())
+						}
+					/>
+				</div>
+				<DialogFooter>
+					<Button type="button" variant="outline" onClick={onClose}>
+						取消
+					</Button>
+					<Button
+						type="button"
+						disabled={!name.trim()}
+						onClick={() => onConfirm(name.trim())}
+					>
+						确定
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 }
 
-/** 删除确认：目录递归删除提示 */
+/** 删除确认：目录递归删除提示（写操作，过 Policy Engine） */
 export function DeleteConfirmDialog({
 	item,
 	onConfirm,
@@ -146,29 +135,28 @@ export function DeleteConfirmDialog({
 }) {
 	const isFolder = item.type === "directory" || item.type === "link";
 	return (
-		<Modal title="确认删除" onClose={onClose}>
-			<p className="mb-3 text-sm" style={{ color: "var(--muted)" }}>
-				确定删除{isFolder ? "目录（递归）" : "文件"}{" "}
-				<span style={{ color: "var(--ink)" }}>{item.path}</span> ？
-			</p>
-			<div className="flex justify-end gap-2">
-				<button
-					type="button"
-					onClick={onClose}
-					className="rounded border px-3 py-1.5 text-xs"
-					style={{ borderColor: "var(--rule)", color: "var(--muted)" }}
-				>
-					取消
-				</button>
-				<button
-					type="button"
-					onClick={onConfirm}
-					className="rounded px-3 py-1.5 text-xs font-medium text-white"
-					style={{ background: "var(--danger)" }}
-				>
-					删除
-				</button>
-			</div>
-		</Modal>
+		<AlertDialog open onOpenChange={(open) => !open && onClose()}>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>确认删除</AlertDialogTitle>
+					<AlertDialogDescription>
+						确定删除{isFolder ? "目录（递归）" : "文件"}
+						<code className="mx-1 rounded bg-muted px-1 font-mono text-foreground">
+							{item.path}
+						</code>
+						？该操作完成后不可撤销。
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel onClick={onClose}>取消</AlertDialogCancel>
+					<AlertDialogAction
+						onClick={onConfirm}
+						className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+					>
+						删除
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
 	);
 }

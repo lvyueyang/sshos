@@ -4,6 +4,16 @@
  * 右键菜单 / 各操作对话框拆到 FileManagerMenu 与 file-dialogs；写操作一律走 SFn（过 Policy Engine）。
  */
 
+import {
+	RiArrowLeftLine,
+	RiFileLine,
+	RiFolder2Line,
+	RiFolderAddLine,
+	RiHome5Line,
+	RiLink,
+	RiRefreshLine,
+	RiUpload2Line,
+} from "@remixicon/react";
 import type { FileInfo } from "@sshos/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -16,7 +26,12 @@ import {
 	ApprovalDialog,
 	type PendingApproval,
 } from "#/components/ApprovalDialog";
+import { Button } from "#/components/ui/button";
+import { Progress } from "#/components/ui/progress";
+import { Separator } from "#/components/ui/separator";
+import { Skeleton } from "#/components/ui/skeleton";
 import { apiFetch, authHeaders } from "#/lib/api-fetch";
+import { formatBytes, formatTime } from "#/lib/format";
 import { manifest } from "./app";
 import {
 	FileManagerMenu,
@@ -24,7 +39,7 @@ import {
 	type MenuItem,
 } from "./FileManagerMenu";
 import { DeleteConfirmDialog, MkdirDialog, RenameDialog } from "./file-dialogs";
-import { formatBytes, formatTime, isDirectory } from "./file-utils";
+import { isDirectory } from "./file-utils";
 import {
 	sftpDeleteSFn,
 	sftpListSFn,
@@ -153,25 +168,40 @@ export function FileManager({ sessionId }: FileManagerProps) {
 	return (
 		<div className="flex h-full flex-col bg-transparent text-sm">
 			{/* 工具栏 */}
-			<div
-				className="flex shrink-0 items-center gap-1 border-b px-2 py-1.5"
-				style={{ borderColor: "var(--rule)" }}
-			>
-				<ToolButton
-					label="后退"
+			<div className="flex shrink-0 items-center gap-1 border-b border-border px-2 py-1.5">
+				<Button
+					variant="ghost"
+					size="xs"
+					type="button"
 					onClick={() => parentOf(cwd) && enterDir(parentOf(cwd)!)}
-				/>
-				<ToolButton label="主页" onClick={() => enterDir("/")} />
-				<ToolButton label="刷新" onClick={refresh} />
-				<ToolButton
-					label="新建目录"
+				>
+					<RiArrowLeftLine /> 后退
+				</Button>
+				<Button
+					variant="ghost"
+					size="xs"
+					type="button"
+					onClick={() => enterDir("/")}
+				>
+					<RiHome5Line /> 主页
+				</Button>
+				<Button variant="ghost" size="xs" type="button" onClick={refresh}>
+					<RiRefreshLine /> 刷新
+				</Button>
+				<Button
+					variant="ghost"
+					size="xs"
+					type="button"
 					onClick={() => setDialog({ type: "mkdir" })}
-				/>
-				<div className="mx-1 h-4 w-px" style={{ background: "var(--rule)" }} />
+				>
+					<RiFolderAddLine /> 新建目录
+				</Button>
+				<Separator orientation="vertical" className="mx-1 h-4" />
 				<label
-					className="cursor-pointer rounded px-2 py-1 hover:bg-white/10"
+					className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-xs text-foreground transition-colors hover:bg-accent"
 					title="上传文件"
 				>
+					<RiUpload2Line className="size-3.5" />
 					上传
 					<input
 						type="file"
@@ -185,9 +215,7 @@ export function FileManager({ sessionId }: FileManagerProps) {
 					/>
 				</label>
 				{message && (
-					<span className="ml-auto text-xs" style={{ color: "var(--accent)" }}>
-						{message}
-					</span>
+					<span className="ml-auto text-xs text-success">{message}</span>
 				)}
 			</div>
 
@@ -199,19 +227,13 @@ export function FileManager({ sessionId }: FileManagerProps) {
 
 			{/* 路径栏 */}
 			<div className="shrink-0 px-2 py-1">
-				<div
-					className="flex items-center gap-1 text-xs"
-					style={{ color: "var(--muted)" }}
-				>
+				<div className="flex items-center gap-1 text-xs text-muted-foreground">
 					<span className="truncate">{cwd}</span>
 				</div>
 			</div>
 
 			{/* 列头 */}
-			<div
-				className="grid shrink-0 grid-cols-[1fr_100px_120px_80px] gap-2 border-b px-2 py-1 text-xs"
-				style={{ borderColor: "var(--rule)", color: "var(--muted)" }}
-			>
+			<div className="grid shrink-0 grid-cols-[1fr_100px_120px_80px] gap-2 border-b border-border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
 				<span>名称</span>
 				<span className="text-right">大小</span>
 				<span>修改时间</span>
@@ -229,8 +251,14 @@ export function FileManager({ sessionId }: FileManagerProps) {
 				}}
 			>
 				{isLoading && (
-					<div className="p-3 text-xs" style={{ color: "var(--muted)" }}>
-						加载中…
+					<div className="space-y-1 p-2">
+						{[0, 1, 2, 3, 4].map((i) => (
+							<div key={i} className="flex items-center gap-2 px-2 py-1.5">
+								<Skeleton className="size-4 shrink-0 rounded" />
+								<Skeleton className="h-3.5 flex-1" />
+								<Skeleton className="h-3.5 w-12" />
+							</div>
+						))}
 					</div>
 				)}
 				{cwd !== "/" && (
@@ -264,40 +292,26 @@ export function FileManager({ sessionId }: FileManagerProps) {
 					/>
 				))}
 				{entries.length === 0 && !isLoading && (
-					<div className="p-3 text-xs" style={{ color: "var(--muted)" }}>
-						空目录
-					</div>
+					<div className="p-3 text-xs text-muted-foreground">空目录</div>
 				)}
 			</div>
 
 			{/* 上传队列 */}
 			{uploads.length > 0 && (
-				<div
-					className="shrink-0 space-y-1 border-t p-2"
-					style={{ borderColor: "var(--rule)" }}
-				>
+				<div className="shrink-0 space-y-1 border-t border-border p-2">
 					{uploads.map((u) => (
 						<div key={u.filename} className="flex items-center gap-2 text-xs">
-							<span className="w-40 truncate" style={{ color: "var(--ink)" }}>
+							<span className="w-40 truncate text-foreground">
 								{u.filename}
 							</span>
 							{u.error ? (
-								<span style={{ color: "var(--danger)" }}>{u.error}</span>
+								<span className="text-danger">{u.error}</span>
 							) : (
 								<>
-									<div
-										className="h-1.5 flex-1 overflow-hidden rounded"
-										style={{ background: "var(--bg3)" }}
-									>
-										<div
-											className="h-full transition-all"
-											style={{
-												width: `${u.progress}%`,
-												background: "var(--accent)",
-											}}
-										/>
-									</div>
-									<span style={{ color: "var(--muted)" }}>{u.progress}%</span>
+									<Progress value={u.progress} className="h-1.5 flex-1" />
+									<span className="text-muted-foreground tabular-nums">
+										{u.progress}%
+									</span>
 								</>
 							)}
 						</div>
@@ -375,8 +389,7 @@ function Row({
 }) {
 	return (
 		<div
-			className="grid grid-cols-[1fr_100px_120px_80px] gap-2 px-2 py-1"
-			style={{ color: "var(--ink)" }}
+			className="grid grid-cols-[1fr_100px_120px_80px] gap-2 px-2 py-1 text-foreground transition-colors hover:bg-muted"
 			onDoubleClick={onOpen}
 			onContextMenu={onMenu}
 			title={item.path}
@@ -385,33 +398,12 @@ function Row({
 				<span>{iconFor(item)}</span>
 				<span className="truncate">{item.name}</span>
 			</span>
-			<span className="text-right" style={{ color: "var(--muted)" }}>
+			<span className="text-right text-muted-foreground">
 				{isDirectory(item) ? "" : formatBytes(item.size)}
 			</span>
-			<span style={{ color: "var(--muted)" }}>{formatTime(item.mtime)}</span>
-			<span className="truncate" style={{ color: "var(--muted)" }}>
-				{item.mode}
-			</span>
+			<span className="text-muted-foreground">{formatTime(item.mtime)}</span>
+			<span className="truncate text-muted-foreground">{item.mode}</span>
 		</div>
-	);
-}
-
-function ToolButton({
-	label,
-	onClick,
-}: {
-	label: string;
-	onClick: () => void;
-}) {
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			className="rounded px-2 py-1 text-xs hover:bg-white/10"
-			style={{ color: "var(--ink)" }}
-		>
-			{label}
-		</button>
 	);
 }
 
@@ -435,11 +427,15 @@ function joinName(oldPath: string, newName: string): string {
 	return `${parent}${newName}`;
 }
 
-/** 目录 / 文件图标（emoji 占位，后续换 icon 组件） */
-function iconFor(item: FileInfo): string {
-	if (item.type === "directory") return "📁";
-	if (item.type === "link") return "🔗";
-	return "📄";
+/** 目录 / 文件图标（Remix，docs/07 §4） */
+function iconFor(item: FileInfo): React.ReactNode {
+	if (item.type === "directory") {
+		return <RiFolder2Line className="size-4 text-app-files" />;
+	}
+	if (item.type === "link") {
+		return <RiLink className="size-4 text-info" />;
+	}
+	return <RiFileLine className="size-4 text-muted-foreground" />;
 }
 
 /** 触发浏览器下载远程文件（Server Route 直通） */

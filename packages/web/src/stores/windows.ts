@@ -30,8 +30,6 @@ interface DesktopState {
 	windowsByTab: Record<string, Record<string, WindowState>>;
 	/** 当前聚焦 Tab */
 	activeTabId: number | null;
-	/** 主题偏好：dark 默认 */
-	theme: "light" | "dark";
 }
 
 interface DesktopActions {
@@ -65,9 +63,6 @@ interface DesktopActions {
 	/** 最大化 / 还原 */
 	toggleMaximize(tabId: number, windowId: string): void;
 	closeWindow(tabId: number, windowId: string): void;
-	toggleTheme(): void;
-	/** 显式设置主题（设置面板 / 初始化持久化恢复用） */
-	setTheme(theme: "light" | "dark"): void;
 }
 
 let maxZIndex = 100;
@@ -76,7 +71,6 @@ export const useDesktopStore = create<DesktopState & DesktopActions>((set) => ({
 	tabs: [],
 	windowsByTab: {},
 	activeTabId: null,
-	theme: "dark",
 
 	openTab: (tab) =>
 		set((state) => {
@@ -210,9 +204,4 @@ export const useDesktopStore = create<DesktopState & DesktopActions>((set) => ({
 			delete tabWindows[windowId];
 			return { windowsByTab: { ...state.windowsByTab, [tabId]: tabWindows } };
 		}),
-
-	toggleTheme: () =>
-		set((state) => ({ theme: state.theme === "dark" ? "light" : "dark" })),
-
-	setTheme: (theme) => set({ theme }),
 }));

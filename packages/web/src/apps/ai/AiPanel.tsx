@@ -3,9 +3,16 @@
  * （SFn 流式返回，逐块读取），自己维护消息列表与流式渲染。工具调用在服务端执行
  * （命令经 Policy Engine）；review 级命令在服务端挂起审批，面板轮询
  * listPendingApprovalsSFn 弹出审批弹窗，批准后 approvalSFn 重放执行（无绕过路径）。
+ * 视觉走 shadcn + motion 气泡动效（docs/06 §7）。
  */
 
+import {
+	RiHistoryLine,
+	RiLoader4Line,
+	RiSendPlaneLine,
+} from "@remixicon/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import {
 	approvalSFn,
@@ -15,6 +22,13 @@ import {
 	ApprovalDialog,
 	type PendingApproval,
 } from "#/components/ApprovalDialog";
+import {
+	CommandCard,
+	type CommandCardData,
+} from "#/components/shared/CommandCard";
+import { Button } from "#/components/ui/button";
+import { Input } from "#/components/ui/input";
+import { cn } from "#/lib/utils";
 import { useUiStore } from "#/stores/ui";
 import { AuditHistoryPanel } from "./AuditHistoryPanel";
 import { aiChatSFn } from "./ai.functions";
@@ -27,6 +41,8 @@ interface AiPanelProps {
 interface ChatMessage {
 	role: "user" | "assistant";
 	content: string;
+	/** 用户态不携带；assistant 消息关联的策略命令卡片（tool-call 帧） */
+	commands?: CommandCardData[];
 }
 
 export function AiPanel({ sessionId }: AiPanelProps) {
@@ -103,6 +119,21 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 			copy[copy.length - 1] = {
 				role: "assistant",
 				content: `${last.content}${prefix}[${label}] ${message}`,
+				commands: last.commands,
+			};
+			return copy;
+		});
+	};
+
+	/** 追加一条命令卡片到当前 assistant 消息（tool-call 帧） */
+	const appendToolCall = (card: CommandCardData) => {
+		setMessages((prev) => {
+			const copy = [...prev];
+			const last = copy[copy.length - 1];
+			if (last?.role !== "assistant") return copy;
+			copy[copy.length - 1] = {
+				...last,
+				commands: [...(last.commands ?? []), card],
 			};
 			return copy;
 		});
@@ -112,8 +143,17 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 		const text = input.trim();
 		if (!text || loading) return;
 		setInput("");
-		const history = [...messages, { role: "user" as const, content: text }];
-		setMessages([...history, { role: "assistant", content: "" }]);
+		// 请求上下文剥离命令卡片（命令卡片是展示态，不进入模型上下文）
+		const history = [
+			...messages.map((m) => ({ role: m.role, content: m.content })),
+			{ role: "user" as const, content: text },
+		];
+		// 展示状态追加（保留历史消息的命令卡片，跨轮不丢失）
+		setMessages([
+			...messages,
+			{ role: "user", content: text },
+			{ role: "assistant", content: "" },
+		]);
 		setLoading(true);
 		const controller = new AbortController();
 		abortRef.current = controller;
@@ -126,6 +166,7 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 			const result = await consumeDeltaStream(
 				stream,
 				appendAssistantDelta,
+				appendToolCall,
 				controller.signal,
 			);
 			if (result.type === "error") {
@@ -148,59 +189,58 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 	};
 
 	return (
-		<div className="flex h-full flex-col bg-transparent">
+		<div className="flex h-full flex-col">
 			{/* 消息列表 */}
-			<div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+			<div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
 				{messages.length === 0 && (
-					<div className="text-xs" style={{ color: "var(--muted)" }}>
+					<div className="text-xs text-muted-foreground">
 						用自然语言描述任务，例如「查看磁盘使用情况」或「列出 /tmp
 						下所有文件」。
 					</div>
 				)}
-				{messages.map((msg, i) => (
-					<MessageBubble key={i} msg={msg} />
-				))}
+				<AnimatePresence initial={false}>
+					{messages.map((msg, i) => (
+						<MessageBubble key={i} msg={msg} />
+					))}
+				</AnimatePresence>
 			</div>
 
 			{/* 审计历史（docs 界面设计 §8.7：历史按钮展开） */}
 			{showHistory && <AuditHistoryPanel sessionId={sessionId} />}
 
 			{/* 输入区 */}
-			<div
-				className="flex shrink-0 gap-2 border-t p-2"
-				style={{ borderColor: "var(--rule)" }}
-			>
-				<input
+			<div className="flex shrink-0 gap-2 border-t border-border p-2">
+				<Input
 					type="text"
 					value={input}
 					onChange={(e) => setInput(e.target.value)}
 					onKeyDown={(e) => e.key === "Enter" && void send()}
 					disabled={loading}
 					placeholder={loading ? "AI 思考中…" : "输入指令…"}
-					className="flex-1 rounded border px-2 py-1.5 text-sm outline-none disabled:opacity-60"
-					style={{ borderColor: "var(--rule)", color: "var(--ink)" }}
+					className="flex-1"
 				/>
-				<button
+				<Button
+					variant="outline"
+					size="icon"
 					type="button"
-					onClick={() => setShowHistory((v) => !v)}
 					title={showHistory ? "收起审计日志" : "展开审计日志"}
-					className="rounded border px-2 py-1.5 text-sm disabled:opacity-50"
-					style={{
-						borderColor: "var(--rule)",
-						color: showHistory ? "var(--accent)" : "var(--muted)",
-					}}
+					aria-label={showHistory ? "收起审计日志" : "展开审计日志"}
+					className={cn(
+						"shrink-0",
+						showHistory && "border-primary text-primary",
+					)}
+					onClick={() => setShowHistory((v) => !v)}
 				>
-					🕘
-				</button>
-				<button
-					type="button"
-					onClick={() => void send()}
-					disabled={loading}
-					className="rounded px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-					style={{ background: "var(--accent)" }}
-				>
+					<RiHistoryLine className="size-4" />
+				</Button>
+				<Button type="button" disabled={loading} onClick={() => void send()}>
+					{loading ? (
+						<RiLoader4Line className="size-4 animate-spin" />
+					) : (
+						<RiSendPlaneLine className="size-4" />
+					)}
 					发送
-				</button>
+				</Button>
 			</div>
 
 			{/* 审批弹窗（AI 命令 review 拦截时弹出） */}
@@ -215,22 +255,32 @@ export function AiPanel({ sessionId }: AiPanelProps) {
 	);
 }
 
-/** 消息气泡：user 右对齐，assistant 左对齐 */
+/** 消息气泡：user 右对齐（primary 淡底），assistant 左对齐（muted 底），进出场动画 */
 function MessageBubble({ msg }: { msg: ChatMessage }) {
 	const isUser = msg.role === "user";
 	return (
-		<div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+		<motion.div
+			initial={{ opacity: 0, y: 6 }}
+			animate={{ opacity: 1, y: 0 }}
+			exit={{ opacity: 0 }}
+			transition={{ duration: 0.16, ease: [0.2, 0, 0, 1] }}
+			className={cn("flex", isUser ? "justify-end" : "justify-start")}
+		>
 			<div
-				className="max-w-[85%] whitespace-pre-wrap rounded-lg border px-3 py-2 text-sm"
-				style={{
-					background: isUser ? "var(--accent)" : "var(--bg3)",
-					borderColor: "var(--rule)",
-					color: isUser ? "#fff" : "var(--ink)",
-				}}
+				className={cn(
+					"max-w-[85%] whitespace-pre-wrap rounded-lg border px-3 py-2 text-sm",
+					isUser
+						? "border-primary/30 bg-primary/10 text-foreground"
+						: "border-border bg-muted text-foreground",
+				)}
 			>
 				{msg.content}
+				{/* 策略命令卡片（safe/review/block 三态，docs/07 §6） */}
+				{msg.commands?.map((card, i) => (
+					<CommandCard key={i} card={card} />
+				))}
 			</div>
-		</div>
+		</motion.div>
 	);
 }
 
@@ -239,6 +289,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 async function consumeDeltaStream(
 	stream: ReadableStream<AiStreamChunk>,
 	onDelta: (delta: string) => void,
+	onToolCall: (card: CommandCardData) => void,
 	signal: AbortSignal,
 ): Promise<
 	{ type: "ok"; hasContent: boolean } | { type: "error"; message: string }
@@ -251,6 +302,8 @@ async function consumeDeltaStream(
 		if (value?.type === "text-delta" && value.delta) {
 			hasContent = true;
 			onDelta(value.delta);
+		} else if (value?.type === "tool-call") {
+			onToolCall(value);
 		} else if (value?.type === "error") {
 			// error 为服务端终止帧，读完即返回
 			return { type: "error", message: value.message };

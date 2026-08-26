@@ -29,8 +29,17 @@ export interface AiChatMessage {
 }
 
 /** AI 对话流帧（SFn 流式 chunk，客户端逐块消费）：
- * text-delta 为正常增量；error 为服务端终止帧（未配置模型 / prompt 失败 / 空响应），
+ * text-delta 为正常增量；tool-call 为命令卡片帧（含策略分类结果，docs/07 §6 三态视觉）；
+ * error 为服务端终止帧（未配置模型 / prompt 失败 / 空响应），
  * 客户端必须展示错误消息而非静默（不吞错） */
 export type AiStreamChunk =
 	| { type: "text-delta"; delta: string }
+	| {
+			type: "tool-call";
+			command: string;
+			classification: "safe" | "review" | "block";
+			result: "success" | "failure";
+			/** 命令输出（截断，供卡片展开） */
+			output?: string;
+	  }
 	| { type: "error"; message: string };

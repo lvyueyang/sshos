@@ -2,9 +2,20 @@
  * 通用审批弹窗（docs 技术架构 §7.3 / D17）：review 级写操作被策略引擎挂起后，
  * 渲染层展示拦截原因，经 approvalSFn 批准重放或拒绝丢弃。
  * 无绕过路径：批准只重放原请求（一次性 requestId），不直接执行任何新操作。
+ * 视觉走 shadcn Dialog + warning 语义（docs/07 §2.3）。
  */
 
+import { RiShieldFlashLine } from "@remixicon/react";
 import { useState } from "react";
+import { Button } from "#/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "#/components/ui/dialog";
 
 export interface PendingApproval {
 	requestId: string;
@@ -36,49 +47,40 @@ export function ApprovalDialog({
 	};
 
 	return (
-		<div
-			className="fixed inset-0 z-50 flex items-center justify-center"
-			style={{ background: "rgba(0,0,0,0.6)" }}
-		>
-			<div
-				className="w-96 rounded-lg border p-4"
-				style={{ background: "var(--bg2)", borderColor: "var(--rule)" }}
-			>
-				<h3
-					className="mb-2 text-sm font-semibold"
-					style={{ color: "var(--warn)" }}
-				>
-					需要审批
-				</h3>
-				<p className="mb-3 text-sm" style={{ color: "var(--ink)" }}>
-					{approval.reason}
-				</p>
+		<Dialog open onOpenChange={(open) => !open && onClose()}>
+			<DialogContent className="sm:max-w-md">
+				<DialogHeader>
+					<DialogTitle className="flex items-center gap-2 text-warning">
+						<RiShieldFlashLine className="size-4" />
+						需要审批
+					</DialogTitle>
+					<DialogDescription className="text-foreground">
+						{approval.reason}
+					</DialogDescription>
+				</DialogHeader>
 				{approval.fnName && (
-					<p className="mb-3 text-xs" style={{ color: "var(--muted)" }}>
+					<p className="text-xs text-muted-foreground">
 						操作：{approval.fnName}
 					</p>
 				)}
-				<div className="flex justify-end gap-2">
-					<button
+				<DialogFooter>
+					<Button
+						variant="outline"
 						type="button"
 						disabled={submitting}
 						onClick={() => void decide("rejected")}
-						className="rounded border px-3 py-1.5 text-xs disabled:opacity-50"
-						style={{ borderColor: "var(--rule)", color: "var(--muted)" }}
 					>
 						拒绝
-					</button>
-					<button
+					</Button>
+					<Button
 						type="button"
 						disabled={submitting}
 						onClick={() => void decide("approved")}
-						className="rounded px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-						style={{ background: "var(--accent)" }}
 					>
 						批准执行
-					</button>
-				</div>
-			</div>
-		</div>
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 }

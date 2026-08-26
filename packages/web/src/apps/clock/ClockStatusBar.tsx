@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 
-/** 状态栏时钟：每秒刷新，样式走 muted token */
+/** 状态栏时钟：每秒刷新，样式走 muted-foreground token（docs/07 §2） */
 export function ClockStatusBar() {
 	const [now, setNow] = useState(() => new Date());
 
@@ -15,10 +15,7 @@ export function ClockStatusBar() {
 	}, []);
 
 	return (
-		<span
-			className="whitespace-nowrap text-xs"
-			style={{ color: "var(--muted)" }}
-		>
+		<span className="whitespace-nowrap text-xs text-muted-foreground">
 			{now.toLocaleTimeString("zh-CN", { hour12: false })}
 		</span>
 	);

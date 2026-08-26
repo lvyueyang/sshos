@@ -1,11 +1,14 @@
 /**
  * 认证门：调用 authStatusSFn 判定状态，按未配置 / 未登录 / 已登录
  * 分别渲染 SetupWizard / LoginForm / 应用内容。纯客户端行为（SSR 输出占位）。
+ * 已认证（ready）分支才挂载 ThemeProvider——此时 bootstrap 已就绪且已鉴权，
+ * 主题持久化恢复（getGlobalSettingSFn）不再被 503/401 吞掉（D24 修复）。
  */
 
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { getAuthToken } from "#/lib/auth-client";
 import { authStatusSFn } from "#/services/auth/auth.functions";
+import { ThemeProvider } from "#/theme/theme-provider";
 import { LoginForm } from "./LoginForm";
 import { SetupWizard } from "./SetupWizard";
 
@@ -43,5 +46,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
 	if (state.phase === "unauth") {
 		return <LoginForm onDone={() => void checkStatus()} />;
 	}
-	return <>{children}</>;
+	// ready：主题恢复 + 持久化仅在已认证后生效（见文件头注释）
+	return <ThemeProvider>{children}</ThemeProvider>;
 }

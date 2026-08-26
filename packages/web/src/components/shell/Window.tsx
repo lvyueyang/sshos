@@ -1,15 +1,31 @@
 /**
- * 通用桌面窗口组件（docs 界面设计 §3.6）：标题栏拖拽 / 边缘缩放 / 聚焦置顶 / 最小化 / 最大化。
- * 窗口状态由 Zustand store 管理（决策记录 D10），纯客户端行为。
+ * 通用桌面窗口组件（docs 界面设计 §3.6 / docs/06 §7）：标题栏拖拽 / 边缘缩放 / 聚焦置顶 / 最小化 / 最大化。
+ * 窗口状态由 Zustand store 管理（决策记录 D10），纯客户端行为；进出场动画走 motion（AnimatePresence 由 Desktop 包裹）。
  */
 
+import {
+	RiCloseLine,
+	RiFullscreenExitLine,
+	RiFullscreenLine,
+	RiSubtractLine,
+} from "@remixicon/react";
+import { motion } from "motion/react";
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "#/components/ui/button";
+import { cn } from "#/lib/utils";
 import { useDesktopStore } from "#/stores/windows";
 
 const MIN_W = 400;
 const MIN_H = 300;
+/** 窗口进出场动效（docs/07 §5：令牌化动效） */
+const WINDOW_MOTION = {
+	initial: { opacity: 0, scale: 0.96 },
+	animate: { opacity: 1, scale: 1 },
+	exit: { opacity: 0, scale: 0.96 },
+	transition: { duration: 0.18, ease: [0.2, 0, 0, 1] },
+} as const;
 
 interface WindowProps {
 	tabId: number;
@@ -30,6 +46,14 @@ export function Window({
 }: WindowProps) {
 	const { t } = useTranslation();
 	const win = useDesktopStore((s) => s.windowsByTab[tabId]?.[windowId]);
+	// 聚焦态：zIndex 为当前 Tab 内最高即聚焦（驱动标题栏高亮与阴影层级）
+	const focused = useDesktopStore(
+		(s) =>
+			win != null &&
+			Object.values(s.windowsByTab[tabId] ?? {}).every(
+				(w) => w.zIndex <= win.zIndex,
+			),
+	);
 	const openWindow = useDesktopStore((s) => s.openWindow);
 	const focusWindow = useDesktopStore((s) => s.focusWindow);
 	const minimizeWindow = useDesktopStore((s) => s.minimizeWindow);
@@ -109,52 +133,82 @@ export function Window({
 	};
 
 	return (
-		<div
-			className="absolute flex flex-col rounded-xl border shadow-lg"
+		<motion.div
+			{...WINDOW_MOTION}
+			className={cn(
+				"absolute flex flex-col overflow-hidden rounded-xl border bg-card",
+				focused
+					? "border-border shadow-lg"
+					: "border-border/70 shadow-md opacity-95",
+			)}
 			style={{
 				left: win.x,
 				top: win.y,
 				width: win.maximized ? "100%" : win.w,
 				height: win.maximized ? "100%" : win.h,
 				zIndex: win.zIndex,
-				background: "var(--bg2)",
-				borderColor: "var(--rule)",
 				display: win.minimized ? "none" : "flex",
 			}}
 			onPointerDown={() => focusWindow(tabId, windowId)}
 		>
+			{/* 标题栏：聚焦时背景加深（docs/07 §6 焦点态） */}
 			<div
-				className="flex h-8 shrink-0 select-none items-center gap-2 border-b px-3"
-				style={{ borderColor: "var(--rule)", cursor: "grab" }}
+				className={cn(
+					"flex h-8 shrink-0 select-none items-center gap-2 border-b px-3",
+					focused
+						? "border-border bg-muted/60"
+						: "border-border/70 bg-transparent",
+				)}
+				style={{ cursor: "grab" }}
 				onPointerDown={startDrag}
 				onDoubleClick={() => toggleMaximize(tabId, windowId)}
 			>
-				<span
-					className="truncate text-sm font-medium"
-					style={{ color: "var(--ink)" }}
-				>
+				<span className="truncate text-sm font-medium text-foreground">
 					{title}
 				</span>
-				<div className="ml-auto flex items-center gap-1">
-					<TitleBarButton
-						label={t("window.minimize")}
-						onClick={() => minimizeWindow(tabId, windowId)}
+				<div className="ml-auto flex items-center gap-0.5">
+					<Button
+						variant="ghost"
+						size="icon-xs"
+						type="button"
+						title={t("window.minimize")}
+						aria-label={t("window.minimize")}
+						className="text-muted-foreground"
+						onClick={(e) => {
+							e.stopPropagation();
+							minimizeWindow(tabId, windowId);
+						}}
 					>
-						—
-					</TitleBarButton>
-					<TitleBarButton
-						label={t(win.maximized ? "window.restore" : "window.maximize")}
-						onClick={() => toggleMaximize(tabId, windowId)}
+						<RiSubtractLine />
+					</Button>
+					<Button
+						variant="ghost"
+						size="icon-xs"
+						type="button"
+						title={t(win.maximized ? "window.restore" : "window.maximize")}
+						aria-label={t(win.maximized ? "window.restore" : "window.maximize")}
+						className="text-muted-foreground"
+						onClick={(e) => {
+							e.stopPropagation();
+							toggleMaximize(tabId, windowId);
+						}}
 					>
-						{win.maximized ? "❐" : "□"}
-					</TitleBarButton>
-					<TitleBarButton
-						label={t("common.close")}
-						onClick={handleClose}
-						danger
+						{win.maximized ? <RiFullscreenExitLine /> : <RiFullscreenLine />}
+					</Button>
+					<Button
+						variant="ghost"
+						size="icon-xs"
+						type="button"
+						title={t("common.close")}
+						aria-label={t("common.close")}
+						className="text-danger hover:bg-danger hover:text-danger-foreground"
+						onClick={(e) => {
+							e.stopPropagation();
+							handleClose();
+						}}
 					>
-						✕
-					</TitleBarButton>
+						<RiCloseLine />
+					</Button>
 				</div>
 			</div>
 			<div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
@@ -162,42 +216,6 @@ export function Window({
 				className="absolute bottom-0 right-0 size-4 cursor-nwse-resize"
 				onPointerDown={startResize}
 			/>
-		</div>
-	);
-}
-
-function TitleBarButton({
-	children,
-	label,
-	onClick,
-	danger,
-}: {
-	children: ReactNode;
-	label: string;
-	onClick: () => void;
-	danger?: boolean;
-}) {
-	return (
-		<button
-			type="button"
-			title={label}
-			aria-label={label}
-			onClick={(e) => {
-				e.stopPropagation();
-				onClick();
-			}}
-			className="flex size-6 items-center justify-center rounded text-xs transition-colors"
-			style={{
-				color: danger ? "var(--danger)" : "var(--muted)",
-			}}
-			onMouseEnter={(e) => {
-				e.currentTarget.style.background = "var(--bg3)";
-			}}
-			onMouseLeave={(e) => {
-				e.currentTarget.style.background = "transparent";
-			}}
-		>
-			{children}
-		</button>
+		</motion.div>
 	);
 }

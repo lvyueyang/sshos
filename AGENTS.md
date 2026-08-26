@@ -44,7 +44,7 @@ ssh-os/
 │   │       ├── services/         # 领域服务层（ssh/sftp/transfer/metrics）
 │   │       └── db/               # node:sqlite + drizzle（index/schema/migrate）
 │   └── desktop/                  # Electron 壳（main/bootstrap/updater）
-└── docs/                         # 01 项目概述 / 02 技术架构 / 03 界面设计 / 04 决策记录 / 05 界面框图 / TODO 待办清单
+└── docs/                         # 01 项目概述 / 02 技术架构 / 03 界面设计 / 04 决策记录 / 05 界面框图 / 06 UI 重构方案 / 07 UI 范式与规则 / TODO 待办清单
 ```
 
 - 依赖方向：`web` → `core` + `policy`；`desktop` → `web`（Electron main 启动 web 的构建产物或 dev server）

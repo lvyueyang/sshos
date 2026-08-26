@@ -7,11 +7,15 @@
  */
 
 import { type AgentTools, createPiAgent } from "#/ai/pi-agent";
+import { ApprovalRequiredError, PolicyError } from "#/approval/registry";
 import { logger } from "#/lib/logger";
 import { guardChatInput } from "#/middleware/prompt-guard";
 import { ensureSftp, sftpManager } from "#/services/sftp/sftp.server";
 import { execWithPolicy } from "#/services/ssh/exec.service";
 import type { AiChatMessage, AiStreamChunk } from "./ai.schemas";
+
+/** 命令卡片携带的输出上限（模型上下文仍收完整 stdout，仅推送客户端时截断） */
+const MAX_TOOL_OUTPUT = 8 * 1024;
 
 /** 构造 AI 对话增量流（SFn 流式）：注入检测 → Pi 生成 → AiStreamChunk 流 */
 export async function createAiChatStream(
@@ -22,15 +26,46 @@ export async function createAiChatStream(
 
 	const tools: AgentTools = {
 		execCommand: async (command) => {
+			// 命令执行结果同时透出 tool-call 帧（客户端渲染三态命令卡片，docs/07 §6）；
+			// 分类取自策略引擎：PolicyError=block / ApprovalRequiredError=review / 成功=safe
+			let classification: "safe" | "review" | "block" = "safe";
+			let result: "success" | "failure" = "success";
+			let output = "";
+			const emitToolCall = () => {
+				try {
+					streamController?.enqueue({
+						type: "tool-call",
+						command,
+						classification,
+						result,
+						// 截断后再推给客户端（避免大 stdout 整包进 renderer，docs/07 §6）
+						output: output ? output.slice(0, MAX_TOOL_OUTPUT) : undefined,
+					});
+				} catch {
+					// 流已关闭则忽略（命令卡片不阻塞对话流）
+				}
+			};
 			try {
 				const stdout = await execWithPolicy(sessionId, command);
-				return { isError: false, content: stdout.trim() || "(无输出)" };
+				output = stdout.trim();
+				classification = "safe";
+				result = "success";
+				emitToolCall();
+				return { isError: false, content: output || "(无输出)" };
 			} catch (err) {
+				if (err instanceof PolicyError) {
+					classification = "block";
+					output = err.message;
+				} else if (err instanceof ApprovalRequiredError) {
+					classification = "review";
+					output = err.message;
+				} else {
+					output = err instanceof Error ? err.message : String(err);
+				}
+				result = "failure";
+				emitToolCall();
 				// PolicyError / ApprovalRequiredError 统一转为工具错误，模型据此向用户说明
-				return {
-					isError: true,
-					content: err instanceof Error ? err.message : String(err),
-				};
+				return { isError: true, content: output };
 			}
 		},
 		readFile: async (path) => {

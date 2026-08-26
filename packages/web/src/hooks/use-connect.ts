@@ -6,6 +6,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { toast } from "sonner";
 import { connectSFn } from "#/apps/terminal/terminal.functions";
 import { useDesktopStore } from "#/stores/windows";
 
@@ -38,6 +39,10 @@ export function useConnect() {
 				});
 			} catch (err) {
 				setSession(connectionId, undefined, "error");
+				// 连接失败必须可见（docs/07 §6：不静默吞错）
+				toast.error(
+					`连接失败：${err instanceof Error ? err.message : String(err)}`,
+				);
 				console.error("连接失败:", err);
 			}
 		},

@@ -11,14 +11,14 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AuthGate } from "#/components/AuthGate";
 import { BootstrapGate } from "#/components/BootstrapGate";
 import { SettingsWindow } from "#/components/SettingsWindow";
-import { Sidebar } from "#/components/Sidebar";
-import { loadPersistedTheme } from "#/components/settings/GeneralSettingsPanel";
-import { TabBar } from "#/components/TabBar";
-import { useDesktopStore } from "#/stores/windows";
+import { Sidebar } from "#/components/shell/Sidebar";
+import { TabBar } from "#/components/shell/TabBar";
+import { Toaster } from "#/components/ui/sonner";
+import { useThemeStore } from "#/stores/theme";
 import "#/lib/i18n";
 import "../globals.css";
 
@@ -49,11 +49,6 @@ function RootComponent() {
 
 /** 应用外壳：左侧连接侧栏 + 右侧 Tab 栏与桌面内容区（docs 界面设计 §2.1） */
 function AppShell() {
-	// 启动后恢复持久化主题（appearance.theme），未配置保持默认 dark
-	useEffect(() => {
-		void loadPersistedTheme();
-	}, []);
-
 	return (
 		<div className="flex h-full overflow-hidden">
 			<Sidebar />
@@ -70,17 +65,28 @@ function AppShell() {
 }
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
-	// 主题偏好由桌面 store 驱动，切换只改根元素 class（SSR 首屏取 store 初始值 dark）
-	const theme = useDesktopStore((s) => s.theme);
+	// 主题四维度由 store 渲染到根元素（SSR 首屏取默认 dark，客户端 hydration 后恢复持久化偏好）
+	const scheme = useThemeStore((s) => s.scheme);
+	const palette = useThemeStore((s) => s.palette);
+	const density = useThemeStore((s) => s.density);
+	const fontScale = useThemeStore((s) => s.fontScale);
 	const [queryClient] = useState(() => new QueryClient());
 	return (
-		<html className={theme} lang="zh-CN">
+		<html
+			className={scheme === "dark" ? "dark" : ""}
+			data-theme={palette}
+			data-density={density}
+			data-font-scale={fontScale}
+			lang="zh-CN"
+		>
 			<head>
 				<HeadContent />
 			</head>
 			<body>
 				<QueryClientProvider client={queryClient}>
 					{children}
+					{/* 全局 toast（docs/07 §6：反馈必达；主题随 theme store） */}
+					<Toaster />
 				</QueryClientProvider>
 				<Scripts />
 			</body>
