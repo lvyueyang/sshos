@@ -11,29 +11,37 @@ import {
 	connectionInputSchema,
 	createGroupSchema,
 	deleteConnectionSchema,
+	deleteGroupSchema,
 	getConnectionSettingSchema,
 	getGlobalSettingSchema,
 	getSystemInfoSchema,
 	type JsonValue,
 	recordAuditSchema,
+	reorderConnectionsSchema,
+	reorderGroupsSchema,
 	setConnectionSettingSchema,
 	setGlobalSettingSchema,
 	testConnectionSchema,
 	updateConnectionSchema,
+	updateGroupSchema,
 } from "./settings.schemas";
 import {
 	createConnection,
 	createGroup,
 	deleteConnection,
+	deleteGroup,
 	getConnection,
 	getConnectionSetting,
 	getSetting,
 	getSystemInfo,
 	listConnections,
 	listGroups,
+	reorderConnections,
+	reorderGroups,
 	setConnectionSetting,
 	setSetting,
 	updateConnection,
+	updateGroup,
 } from "./settings.server";
 
 const idSchema = z.object({ id: z.number().int().positive() });
@@ -114,6 +122,38 @@ export const createGroupSFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		const id = await createGroup(data.name, data.color);
 		return { id };
+	});
+
+/** 更新分组 */
+export const updateGroupSFn = createServerFn({ method: "POST" })
+	.validator(updateGroupSchema)
+	.handler(async ({ data }) => {
+		await updateGroup(data.id, { name: data.name, color: data.color });
+		return { ok: true };
+	});
+
+/** 删除分组，连接转入默认分组 */
+export const deleteGroupSFn = createServerFn({ method: "POST" })
+	.validator(deleteGroupSchema)
+	.handler(async ({ data }) => {
+		await deleteGroup(data.id);
+		return { ok: true };
+	});
+
+/** 保存分组拖拽顺序 */
+export const reorderGroupsSFn = createServerFn({ method: "POST" })
+	.validator(reorderGroupsSchema)
+	.handler(async ({ data }) => {
+		await reorderGroups(data.ids);
+		return { ok: true };
+	});
+
+/** 保存连接拖拽顺序与目标分组 */
+export const reorderConnectionsSFn = createServerFn({ method: "POST" })
+	.validator(reorderConnectionsSchema)
+	.handler(async ({ data }) => {
+		await reorderConnections(data.groupId, data.connectionIds);
+		return { ok: true };
 	});
 
 /** 测试连接（5s 超时）：成功返回 OS 信息，失败返回错误消息 */

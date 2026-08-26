@@ -4,7 +4,7 @@
  */
 
 import type { AuthType } from "@sshos/core";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db } from "#/db";
 import {
 	connection,
@@ -115,7 +115,7 @@ export async function listConnections(): Promise<ConnectionRow[]> {
 	return db
 		.select()
 		.from(connection)
-		.orderBy(connection.sortOrder, connection.id);
+		.orderBy(connection.groupId, connection.sortOrder, connection.id);
 }
 
 /** 新建分组，返回分组 ID */
@@ -123,11 +123,118 @@ export async function createGroup(
 	name: string,
 	color?: string,
 ): Promise<number> {
+	const normalizedName = name.trim();
+	if (!normalizedName || normalizedName === "默认") {
+		throw new Error("分组名称不能为空且不能使用默认");
+	}
+	const duplicate = await db
+		.select({ id: connectionGroup.id })
+		.from(connectionGroup)
+		.where(eq(connectionGroup.name, normalizedName));
+	if (duplicate.length > 0) throw new Error("分组名称已存在");
 	const [row] = await db
 		.insert(connectionGroup)
-		.values({ name, color })
+		.values({ name: normalizedName, color })
 		.returning({ id: connectionGroup.id });
 	return row.id;
+}
+
+export async function updateGroup(
+	id: number,
+	input: { name: string; color?: string },
+): Promise<void> {
+	const normalizedName = input.name.trim();
+	if (!normalizedName || normalizedName === "默认") {
+		throw new Error("分组名称不能为空且不能使用默认");
+	}
+	const duplicate = await db
+		.select({ id: connectionGroup.id })
+		.from(connectionGroup)
+		.where(
+			and(eq(connectionGroup.name, normalizedName), ne(connectionGroup.id, id)),
+		);
+	if (duplicate.length > 0) throw new Error("分组名称已存在");
+	await db
+		.update(connectionGroup)
+		.set({ name: normalizedName, color: input.color })
+		.where(eq(connectionGroup.id, id));
+}
+
+export async function deleteGroup(id: number): Promise<void> {
+	await db
+		.update(connection)
+		.set({ groupId: null })
+		.where(eq(connection.groupId, id));
+	await db.delete(connectionGroup).where(eq(connectionGroup.id, id));
+}
+
+export async function reorderGroups(ids: number[]): Promise<void> {
+	const groups = await db
+		.select({ id: connectionGroup.id })
+		.from(connectionGroup);
+	const existing = new Set(groups.map((group) => group.id));
+	if (
+		ids.length !== existing.size ||
+		new Set(ids).size !== ids.length ||
+		ids.some((id) => !existing.has(id))
+	) {
+		throw new Error("分组排序数据无效");
+	}
+	for (const [sortOrder, id] of ids.entries()) {
+		await db
+			.update(connectionGroup)
+			.set({ sortOrder })
+			.where(eq(connectionGroup.id, id));
+	}
+}
+
+export async function reorderConnections(
+	groupId: number | null,
+	connectionIds: number[],
+): Promise<void> {
+	if (new Set(connectionIds).size !== connectionIds.length)
+		throw new Error("连接排序数据无效");
+	if (groupId !== null) {
+		const group = await db
+			.select({ id: connectionGroup.id })
+			.from(connectionGroup)
+			.where(eq(connectionGroup.id, groupId));
+		if (group.length === 0) throw new Error("目标分组不存在");
+	}
+	const rows = connectionIds.length
+		? await db
+				.select({ id: connection.id, groupId: connection.groupId })
+				.from(connection)
+				.where(inArray(connection.id, connectionIds))
+		: [];
+	if (rows.length !== connectionIds.length) throw new Error("连接排序数据无效");
+	const affectedGroupIds = new Set<number | null>([
+		groupId,
+		...rows.map((row) => row.groupId),
+	]);
+	for (const [sortOrder, id] of connectionIds.entries()) {
+		await db
+			.update(connection)
+			.set({ groupId, sortOrder })
+			.where(eq(connection.id, id));
+	}
+	for (const affectedGroupId of affectedGroupIds) {
+		const remaining = await db
+			.select({ id: connection.id })
+			.from(connection)
+			.where(
+				affectedGroupId === null
+					? isNull(connection.groupId)
+					: eq(connection.groupId, affectedGroupId),
+			)
+			.orderBy(connection.sortOrder, connection.id);
+		for (const [sortOrder, row] of remaining.entries()) {
+			await db
+				.update(connection)
+				.set({ sortOrder })
+				.where(eq(connection.id, row.id));
+		}
+	}
 }
 
 /** 列出全部分组 */

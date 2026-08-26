@@ -36,8 +36,40 @@ export const deleteConnectionSchema = z.object({
 
 /** 新建分组 */
 export const createGroupSchema = z.object({
-	name: z.string().min(1),
+	name: z
+		.string()
+		.trim()
+		.min(1)
+		.max(30)
+		.refine((name) => name !== "默认", {
+			message: "默认是保留分组名称",
+		}),
 	color: z.string().optional(),
+});
+
+export const updateGroupSchema = z.object({
+	id: z.number().int().positive(),
+	name: z
+		.string()
+		.trim()
+		.min(1)
+		.max(30)
+		.refine((name) => name !== "默认", {
+			message: "默认是保留分组名称",
+		}),
+	color: z.string().optional(),
+});
+
+export const deleteGroupSchema = z.object({ id: z.number().int().positive() });
+
+export const reorderGroupsSchema = z.object({
+	ids: z.array(z.number().int().positive()).min(1),
+});
+
+/** 连接排序与移动；null 表示虚拟默认分组 */
+export const reorderConnectionsSchema = z.object({
+	groupId: z.number().int().positive().nullable(),
+	connectionIds: z.array(z.number().int().positive()),
 });
 
 /** 测试连接 */

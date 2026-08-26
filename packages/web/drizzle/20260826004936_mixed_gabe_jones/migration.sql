@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `connection_group_name_uk` ON `connection_group` (`name`);

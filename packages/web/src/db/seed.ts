@@ -4,9 +4,8 @@
  */
 
 import { eq } from "drizzle-orm";
-import { createGroup } from "#/services/settings/settings.server";
 import { db } from "./index";
-import { connectionGroup, terminalTheme } from "./schema";
+import { terminalTheme } from "./schema";
 
 /** 内置终端主题：Monokai（ANSI 16 色 + 前景 / 背景 / 光标，JSON 序列化） */
 const MONOKAI_THEME = {
@@ -33,22 +32,6 @@ const MONOKAI_THEME = {
 	cursor: "#f8f8f2",
 };
 
-/** 默认分组装饰色（docs 界面设计 §2.4） */
-const DEFAULT_GROUPS = [
-	{ name: "生产", color: "#F85149" },
-	{ name: "开发", color: "#58A6FF" },
-	{ name: "个人", color: "#3FB950" },
-];
-
-/** 幂等写入默认分组（表为空时） */
-async function seedGroups(): Promise<void> {
-	const existing = await db.select().from(connectionGroup).limit(1);
-	if (existing.length > 0) return;
-	for (const g of DEFAULT_GROUPS) {
-		await createGroup(g.name, g.color);
-	}
-}
-
 /** 幂等写入内置 Monokai 终端主题（同名主题不存在时） */
 async function seedTerminalTheme(): Promise<void> {
 	const existing = await db
@@ -66,6 +49,5 @@ async function seedTerminalTheme(): Promise<void> {
 
 /** 启动预置数据（迁移完成后调用） */
 export async function runSeed(): Promise<void> {
-	await seedGroups();
 	await seedTerminalTheme();
 }

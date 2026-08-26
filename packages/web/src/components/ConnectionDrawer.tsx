@@ -149,9 +149,9 @@ export function ConnectionDrawer({
 		setSaving(true);
 		try {
 			if (mode === "create") {
-				// 自动放入第一个分组（若存在）
-				const groupId = form.groupId ?? groups[0]?.id ?? null;
-				await createConnectionSFn({ data: { ...form, groupId } });
+				await createConnectionSFn({
+					data: { ...form, groupId: form.groupId ?? null },
+				});
 			} else if (connectionId) {
 				await updateConnectionSFn({ data: { id: connectionId, input: form } });
 			}

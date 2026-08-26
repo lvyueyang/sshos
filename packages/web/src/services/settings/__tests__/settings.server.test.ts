@@ -103,4 +103,59 @@ describe("分组管理", () => {
 		const groups = await settings.listGroups();
 		expect(groups.some((g) => g.id === id && g.name === "开发")).toBe(true);
 	});
+
+	it("分组名称 trim 且拒绝空白、默认和重复名称", async () => {
+		const id = await settings.createGroup("  测试分组  ");
+		expect(
+			(await settings.listGroups()).find((group) => group.id === id)?.name,
+		).toBe("测试分组");
+		await expect(settings.createGroup(" 测试分组 ")).rejects.toThrow("已存在");
+		await expect(settings.createGroup("   ")).rejects.toThrow("不能为空");
+		await expect(settings.createGroup("默认")).rejects.toThrow("不能使用默认");
+	});
+
+	it("删除分组后连接转入默认分组", async () => {
+		const groupId = await settings.createGroup("待删除");
+		const connectionId = await settings.createConnection({
+			...connectionInput,
+			title: "group-delete",
+			groupId,
+		});
+		await settings.deleteGroup(groupId);
+		expect((await settings.getConnection(connectionId))?.groupId).toBeNull();
+	});
+
+	it("连接排序可以移动到自定义分组或默认分组", async () => {
+		const groupId = await settings.createGroup("排序目标");
+		const connectionId = await settings.createConnection({
+			...connectionInput,
+			title: "reorder-connection",
+		});
+		await settings.reorderConnections(groupId, [connectionId]);
+		expect((await settings.getConnection(connectionId))?.groupId).toBe(groupId);
+		await settings.reorderConnections(null, [connectionId]);
+		expect((await settings.getConnection(connectionId))?.groupId).toBeNull();
+	});
+
+	it("跨组移动后源分组排序连续", async () => {
+		const sourceGroupId = await settings.createGroup("排序源");
+		const targetGroupId = await settings.createGroup("排序目的");
+		const firstId = await settings.createConnection({
+			...connectionInput,
+			title: "source-first",
+			groupId: sourceGroupId,
+		});
+		const movedId = await settings.createConnection({
+			...connectionInput,
+			title: "source-moved",
+			groupId: sourceGroupId,
+		});
+		await settings.reorderConnections(targetGroupId, [movedId]);
+		const sourceRows = (await settings.listConnections()).filter(
+			(connection) => connection.groupId === sourceGroupId,
+		);
+		expect(
+			sourceRows.find((connection) => connection.id === firstId)?.sortOrder,
+		).toBe(0);
+	});
 });

@@ -12,16 +12,20 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 /** 连接分组 */
-export const connectionGroup = sqliteTable("connection_group", {
-	id: integer("id").primaryKey({ autoIncrement: true }),
-	name: text("name").notNull(),
-	/** 装饰色，如 #6054F1 */
-	color: text("color"),
-	sortOrder: integer("sort_order").default(0),
-	createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
-		() => new Date(),
-	),
-});
+export const connectionGroup = sqliteTable(
+	"connection_group",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		name: text("name").notNull(),
+		/** 装饰色，如 #6054F1 */
+		color: text("color"),
+		sortOrder: integer("sort_order").default(0),
+		createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+			() => new Date(),
+		),
+	},
+	(t) => [uniqueIndex("connection_group_name_uk").on(t.name)],
+);
 
 /** 终端主题（ANSI 配色方案，每个连接独立引用） */
 export const terminalTheme = sqliteTable("terminal_theme", {
