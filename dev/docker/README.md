@@ -38,11 +38,11 @@ pnpm test:containers:down    # 等价 down
 # 按发行版设 SSH_TEST_PORT 与 SSH_TEST_DISTRO
 SSH_TEST_HOST=localhost SSH_TEST_PORT=2222 SSH_TEST_USER=test \
 SSH_TEST_PASSWORD=testpass SSH_TEST_DISTRO=alpine \
-pnpm --filter @sshos/core test
+pnpm --filter @sshos/web test
 ```
 
 `SSH_TEST_DISTRO` 取值 `alpine | debian | rocky`，对应断言见
-`packages/core/src/__tests__/ssh-integration.test.ts` 的 `EXPECTED_PROFILE`。
+`packages/web/src/services/ssh/__tests__/ssh-integration.test.ts` 的 `EXPECTED_PROFILE`。
 
 ## 新增发行版
 

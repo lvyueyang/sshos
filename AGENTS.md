@@ -4,7 +4,7 @@
 
 SSH 可视化终端管理工具（代号 ssh-os）：以**纯 SSH 协议、零 agent** 把远程 Linux 的文件、进程、软件、Docker 以桌面隐喻可视化呈现，用户像操作本地电脑一样操作远程服务器，AI 作为"第二消费者"接入同一套读写网关。桌面外壳范式：一个 SSH 连接 = 一个 OS 桌面 Tab。
 
-**当前阶段**：P0-P3 已落地（脚手架 / SSH 引擎 / 策略分类器 / web 基座），W0 spike 完成（PTY / metrics 流实测首包 2-3ms，Pi SDK 0.84.2 API 定稿）；D20 发行版适配已落地（core 发行版 Profile + App 远程能力探测 + 缺失依赖安装引导，见「发行版适配」小节）。修改实现前先读设计文档；文档与实现冲突时以决策记录（`docs/04-决策记录.md`）为单一事实来源。
+**当前阶段**：P0-P3 已落地（脚手架 / SSH 引擎 / 策略分类器 / web 基座），W0 spike 完成（PTY / metrics 流实测首包 2-3ms，Pi SDK 0.84.2 API 定稿）；D20 发行版适配已落地（发行版 Profile + App 远程能力探测 + 缺失依赖安装引导，见「发行版适配」小节）。修改实现前先读设计文档；文档与实现冲突时以决策记录（`docs/04-决策记录.md`）为单一事实来源。
 
 ## 开发测试环境
 
@@ -21,34 +21,33 @@ SSH 可视化终端管理工具（代号 ssh-os）：以**纯 SSH 协议、零 a
 
 ## 工程结构
 
-单仓库多包（pnpm workspace），`packages/web` 为 TanStack Start 应用包，其余为框架无关库包。
+单仓库多包（pnpm workspace）：`packages/web` 为 TanStack Start 应用包（SSH 引擎 / 策略分类器内聚于其 `services/`），`packages/desktop` 为 Electron 壳。
 
 ```text
 ssh-os/
 ├── pnpm-workspace.yaml
 ├── packages/
-│   ├── core/                     # @sshos/core —— 框架无关 SSH 核心逻辑（ssh2 连接/PTY/SFTP/指标采集）
-│   ├── policy/                   # @sshos/policy —— 命令分类引擎（rules/classifier，safe/review/block）
 │   ├── web/                      # @sshos/web —— TanStack Start 应用包（SFn / Server Route / apps / app-framework）
 │   │   ├── vite.config.ts        # TanStack Start + Vite 配置（tanstackStart/nitro/tailwindcss/importProtection）
 │   │   ├── server.ts             # Nitro server entry（生产构建入口）
 │   │   └── src/
 │   │       ├── routes/           # 仅 __root / index / api/*（无功能页面路由）
-│   │       ├── apps/             # 桌面应用插件包：terminal / files / monitor / clock / ai
+│   │       ├── apps/             # 桌面应用插件包：terminal / files / monitor / clock / ai / logs
 │   │       ├── app-framework/    # App 插件框架（types/registry/app-manager/dispatcher）
 │   │       ├── components/       # 通用桌面组件（Sidebar/Desktop/Taskbar/Window）
 │   │       ├── stores/           # Zustand 桌面 UI 状态（窗口/Tab/焦点）
-│   │       ├── middleware/       # policy-engine / audit-log / prompt-guard
-│   │       ├── approval/         # 审批机制（registry + approvalSFn）
-│   │       ├── ai/               # pi-agent（Pi SDK 封装，工具 handler 依赖注入）
-│   │       ├── services/         # 领域服务层（ssh/sftp/transfer/metrics）
+│   │       ├── middleware/       # auth / sf-error-logger
+│   │       ├── services/         # 领域服务层：ssh（连接/PTY/SFTP/命令执行）、ai（pi-agent/prompt-guard/
+│   │       │                     #   chat.server/chat.functions/ai-config）、metrics（collector/server）、
+│   │       │                     #   capabilities（distro-profile/probe/install）、policy（classifier/rules）、
+│   │       │                     #   ai/approval（AI / 自动操作审批）
 │   │       └── db/               # node:sqlite + drizzle（index/schema/migrate）
 │   └── desktop/                  # Electron 壳（main/bootstrap/updater）
 └── docs/                         # 01 项目概述 / 02 技术架构 / 03 界面设计 / 04 决策记录 / 05 界面框图 / 06 UI 重构方案 / 07 UI 范式与规则 / TODO 待办清单
 ```
 
-- 依赖方向：`web` → `core` + `policy`；`desktop` → `web`（Electron main 启动 web 的构建产物或 dev server）
-- `#/*` 别名仅在 web 包内生效（`#/*` → `./src/*`）；跨包引用一律用 `@sshos/*` subpath import
+- 依赖方向：`desktop` → `web`（Electron main 启动 web 的构建产物或 dev server）；SSH 核心逻辑与策略分类器均内聚在 web 包 `services/` 内，不再有独立 core / policy 包
+- `#/*` 别名仅在 web 包内生效（`#/*` → `./src/*`）
 - **包边界保护**：`vite.config.ts` 的 `importProtection` 按包名拦截 `ssh2`、`@earendil-works/pi-coding-agent` 进入 renderer bundle
 
 ## 技术栈
@@ -92,7 +91,8 @@ ssh-os/
 
 ### 策略引擎与审批
 
-- **挂载边界**：策略引擎覆盖全部**写操作类 SFn**——命令执行（`execCommandSFn`，shell 文本分类）与 SFTP 变更写操作（`sftpDeleteSFn` / `sftpRenameSFn`（SFTP rename 原语覆盖重命名与移动），路径规则分类）；`sftpMkdirSFn`（创建）与文件上传为低风险新建，safe 放行；`sendInputSFn`（终端逐键流）**不挂**——逐键分段无法可靠分类
+- **归属原则（连接器哲学）**：本项目本质是 SSH 连接器——**用户手动操作不设防**（终端输入、文件删除/重命名/上传等直接执行，人对自己操作负责）。策略引擎只服务于 **AI / 自动操作**路径（`execWithPolicy`：AI 工具命令、非交互入口 `execCommandSFn`、安装引导）
+- **三段式分类**（`services/policy`）：黑名单 `block` 直接拒绝 → 只读白名单 `safe` 直接放行 → 其余**默认 `review` 每次人工确认**；不逐条枚举写操作规则
 - 三级命名 `safe / review / block` 全链路一致（UI 状态色、数据库 `log.classification`）
 - `block` 直接抛 `PolicyError`；`review` 登记审批挂起表后抛 `ApprovalRequiredError(requestId)`，由 `approvalSFn` 决策后重放执行（Approval Registry，见 docs/02 §7.3）
 - `approvalSFn` 本身不挂 Policy Engine（避免递归审批），只信任一次性、绑定原请求的 `requestId`
@@ -100,8 +100,7 @@ ssh-os/
 
 ### 审计日志
 
-- `auditLogMiddleware` 挂载在 Policy Engine **外层**（middleware 数组首位），用 `try/finally` 包裹，policy 抛出的 block/review 错误也要落审计
-- 写 SQLite `log` 表（`type` = `policy_decision`，含 `classification` / `action` / `result`），通过 BatchWriter 批量写入
+- AI / 自动操作的命令路径在 `exec.service.ts` 内联落审计（`execWithPolicy` 内 `writeAudit`：block/review/safe 全记录），写 SQLite `log` 表（`type` = `policy_decision`，含 `classification` / `action` / `result`），通过 BatchWriter 批量写入；用户手动操作不落策略审计
 - 终端交互命令走 `recordTerminalCommandSFn`（`services/logs`）：客户端命令追踪器累积 onData 输入行，回车落 `terminal_command`（action=`user_input`）；PTY 输出检测到密码提示时抑制密码行落库；命令字段与分类器一致：优先提取 `data.command`，避免整包序列化
 - 日志查询统一走 `listLogsSFn`（`services/logs`，按 sessionId/connectionId/type/classification 过滤 + 分页）；**独立日志应用**（`apps/logs`，桌面图标 + 窗口）统一查看三类日志，AI 面板「历史」按钮为快捷入口
 - BatchWriter 写入失败时条目放回头部按指数退避重试（上限 60s），不丢审计
@@ -112,7 +111,8 @@ ssh-os/
 
 ### AI 集成
 
-- 引擎为 `@earendil-works/pi-coding-agent` SDK 模式；`pi-agent.ts` 通过依赖注入接收工具 handler（由 `ai.functions.ts` 把 SFn 包装后传入），**禁止** pi-agent 直接 import SFn（避免循环依赖）
+- 引擎为 `@earendil-works/pi-coding-agent` SDK 模式，全部服务端 AI 逻辑内聚于 `services/ai/`（`pi-agent.ts` 封装 + `chat.server.ts` 对话流 + `prompt-guard.ts` 注入检测 + `ai-config` 模型配置）；`apps/ai/` 仅为插件 UI 壳（AiPanel / AuditHistoryPanel）
+- `pi-agent.ts` 通过依赖注入接收工具 handler（由 `ai.functions.ts` 把 SFn 包装后传入），**禁止** pi-agent 直接 import SFn（避免循环依赖）
 
 ## 路由与桌面范式
 
@@ -128,18 +128,18 @@ ssh-os/
 - 生命周期四钩子：`onCreate(ctx)` / `onRestore(state)` / `onSave()` / `onShutdown(reason)`；实例销毁但状态保留（存 `connection_setting`）
 - **上下文菜单贡献点**：manifest 声明 `contributes.contextMenus`（`{ id, target:'file'|'folder', label, group, order, when }`），`setup(ctx)` 里 `ctx.menus.registerHandler(id, handler)` 绑定处理器
   - 仅声明 `sftp` 能力的 app 可注册文件/文件夹菜单
-  - 处理器动作走 SFn，写操作自动过 Policy Engine，无绕过路径
+  - 处理器动作走 SFn；AI / 自动操作写命令经 `execWithPolicy` 过策略，无绕过路径
   - 注册返回 Disposable，随 app 启停回收
 
 ## 发行版适配（D20）
 
 对不同 Linux 发行版 / 镜像做三层适配（详见 `docs/04-决策记录.md` D20 与 `docs/02-技术架构.md` §6.7）：
 
-1. **发行版 Profile（core）**：连接后按回退链（`/etc/os-release` → `/etc/redhat-release` → `/etc/debian_version` → `lsb_release` → `uname`）探测一次，产出 `{ id, family, packageManager, initSystem, coreutils }`，随会话缓存、断开清理；经 `getSessionProfileSFn` 暴露
+1. **发行版 Profile（services/capabilities `distro-profile.ts`）**：连接后按回退链（`/etc/os-release` → `/etc/redhat-release` → `/etc/debian_version` → `lsb_release` → `uname`）探测一次，产出 `{ id, family, packageManager, initSystem, coreutils }`，随会话缓存、断开清理；经 `getSessionProfileSFn` 暴露
 2. **App 远程能力探测**：`AppManifest.remoteRequirements` 声明远程工具依赖；`probeToolsSFn` 固定只读命令 `command -v` 批量探测（工具名白名单校验），按会话缓存 TTL 60s；UI 走 `useRemoteTools` + `AppCapabilities`（gate/hint/fallback）
-3. **缺失依赖安装引导**：`InstallGuide` 三路径——**一键安装**（`install-knowledge.ts` 按包管理器生成命令 → `execWithPolicy` → 包管理器写操作 review 审批，无绕过路径）、**手动安装**（可复制命令/源码步骤）、**AI 对话式安装**（预填 prompt 唤起 AI 面板）
+3. **缺失依赖安装引导**：`InstallGuide` 三路径——**一键安装**（`install-knowledge.ts` 按包管理器生成命令 → `execWithPolicy` → 包管理器写命令默认 review 审批，无绕过路径）、**手动安装**（可复制命令/源码步骤）、**AI 对话式安装**（预填 prompt 唤起 AI 面板）
 
-约定：探测 / 发行版识别命令为**服务端固定只读**，走直接 exec（不经策略分类，与 metrics 采样一致）；`command -v` 精确形态在只读白名单；包管理器 review 规则带词边界并覆盖 `apt|yum|dnf|pacman|apk|zypper|emerge|snap|flatpak`；服务管理规则按 Profile `initSystem` 派生。`execWithPolicy` 位于 `services/ssh/exec.service.ts`（AI 工具 / execCommandSFn / 安装引导共用）。
+约定：探测 / 发行版识别命令为**服务端固定只读**，走直接 exec（不经策略分类，与 metrics 采样一致）；`command -v` 精确形态在只读白名单。`execWithPolicy` 位于 `services/ssh/command/exec.service.ts`（AI 工具 / execCommandSFn / 安装引导共用）。
 
 ## 数据库
 
@@ -154,7 +154,7 @@ ssh-os/
 
 四层，职责互不重叠：
 
-1. **服务端会话状态**（packages/core 内存 Map，sessionId 为 key，Tab 生命周期绑定）
+1. **服务端会话状态**（`services/ssh` 内存 Map，sessionId 为 key，Tab 生命周期绑定）
 2. **客户端数据缓存**（TanStack Query，`queryKey` 映射 SFn + 入参，增删改后 `invalidateQueries`）
 3. **客户端 UI 状态**（Zustand：Tab 列表 / 窗口管理器 / 焦点 / 主题偏好；主题持久化 `setting` 表 key = `appearance.theme`）
 4. **App 实例状态**（app-manager 读写 `connection_setting`：`desktop.layout` / `app.<id>.state`）
@@ -172,7 +172,7 @@ ssh-os/
 
 | 层 | 存储 | 用途 |
 | --- | --- | --- |
-| 结构化日志 | SQLite `log` 表 | AI 审计、终端命令、Policy Engine 决策（可查询） |
+| 结构化日志 | SQLite `log` 表 | AI 审计、终端命令、AI/自动操作策略决策（可查询） |
 | 运行时日志 | Pino 文件（`{dataDir}/logs/`，开发 `~/.ssh-os-dev` / 生产 `~/.ssh-os`） | SSH 握手、SFTP 传输、异常堆栈、SFn 调用链 |
 
 高频审计写入用 BatchWriter 缓冲（定时/定量批量 INSERT + 容量上限 + 进程退出时强制刷新），避免拖慢 PTY 吞吐。
@@ -257,7 +257,7 @@ ssh-os/
 
 ### 项目安全约束
 
-- **策略引擎挂载边界**：覆盖全部写操作类 SFn（命令执行 + SFTP 变更写操作）；`sendInputSFn` 逐键流不挂策略（见 docs/02 §5.3）
+- **策略引擎挂载边界**：只服务 AI / 自动操作路径（`execWithPolicy`：AI 工具命令、`execCommandSFn`、安装引导）；用户手动操作（终端输入、文件操作）不过策略；`sendInputSFn` 逐键流不挂策略（见 docs/02 §5.3）
 - **审批无绕过路径**：review 级命令必须经 Approval Registry + `approvalSFn` 重放执行，不存在"直接执行"路径
 - **Prompt 注入隔离**：systemPrompt 代码硬编码，用户消息不得覆盖；`chatSchema` 排除 `system` 角色
 - **全局请求鉴权（D21）**：SFn 与 `/api/*` 端点经 TanStack request 中间件统一校验 `X-SSHOS-TOKEN`（JWT，HS256，与 server.json `serverSecret` 验签）；**公开 SFn**（`lib/public-sfns.ts` 注册，认证 setup/login/status 与 bootstrap 状态）与 `/api/health`、页面/静态资源豁免；未配置启动密码时业务请求一律 401；bootstrap 未 ready 时业务请求一律 503；渲染层请求统一经 `lib/api-fetch.ts` / `serverFns.fetch` 携带 token（存 localStorage，`lib/auth-client.ts`），禁止绕过

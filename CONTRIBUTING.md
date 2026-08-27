@@ -20,9 +20,9 @@ pnpm build      # web 生产构建（Nitro 产物）
 
 ## 工程约定
 
-- 单仓库多包（pnpm workspace）：`packages/core`（SSH 引擎）/ `policy`（命令分类）/ `web`（TanStack Start 应用）/ `desktop`（Electron 主进程）
-- 依赖方向：`web → core + policy`；`desktop → web`；跨包引用一律 `@sshos/*` subpath import，`#/*` 别名仅 web 包内生效
-- 架构铁律：renderer 永不直连 Electron ipcMain，通信一律走 SFn / Server Route；策略引擎覆盖全部写操作类 SFn，无绕过路径
+- 单仓库多包（pnpm workspace）：`web`（TanStack Start 应用，SSH 引擎与策略分类器内聚于 `services/`）/ `desktop`（Electron 主进程）
+- 依赖方向：`desktop → web`（Electron main 启动 web 构建产物或 dev server）；`#/*` 别名仅 web 包内生效
+- 架构铁律：renderer 永不直连 Electron ipcMain，通信一律走 SFn / Server Route；策略引擎只服务 AI / 自动操作路径（用户手动操作不设防，连接器本质），AI 命令无绕过路径
 - 修改实现前先读设计文档；文档与实现冲突时以决策记录（`docs/04-决策记录.md`）为准
 
 ## 提交规范
@@ -39,7 +39,7 @@ pnpm build      # web 生产构建（Nitro 产物）
 
 ## SSH 集成测试
 
-core 包的 SSH 集成测试默认跳过，设置以下环境变量后启用。多发行版测试机由 `dev/docker/docker-compose.yml` 统一管理（Alpine `localhost:2222` / Debian `localhost:2223` / Rocky `localhost:2224`，统一账号 `test` / `testpass`）：
+web 包的 SSH 集成测试默认跳过，设置以下环境变量后启用。多发行版测试机由 `dev/docker/docker-compose.yml` 统一管理（Alpine `localhost:2222` / Debian `localhost:2223` / Rocky `localhost:2224`，统一账号 `test` / `testpass`）：
 
 ```bash
 # 启动测试机矩阵（首次构建需拉取镜像；可用 pnpm test:containers:up）
@@ -52,11 +52,11 @@ SSH_TEST_PASSWORD=testpass pnpm test
 # Debian / Rocky（按发行版设 SSH_TEST_DISTRO）
 SSH_TEST_HOST=localhost SSH_TEST_PORT=2223 SSH_TEST_USER=test \
 SSH_TEST_PASSWORD=testpass SSH_TEST_DISTRO=debian \
-pnpm --filter @sshos/core test
+pnpm --filter @sshos/web test
 
 SSH_TEST_HOST=localhost SSH_TEST_PORT=2224 SSH_TEST_USER=test \
 SSH_TEST_PASSWORD=testpass SSH_TEST_DISTRO=rocky \
-pnpm --filter @sshos/core test
+pnpm --filter @sshos/web test
 
 # 停止矩阵（可用 pnpm test:containers:down）
 docker compose -f dev/docker/docker-compose.yml down
