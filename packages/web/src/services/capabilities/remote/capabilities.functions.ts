@@ -5,6 +5,7 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { authMiddleware } from "#/middleware/auth-guard";
 import {
 	getSessionProfileSchema,
 	installToolSchema,
@@ -20,11 +21,13 @@ import {
 /** 查询会话发行版 Profile（探测一次并缓存） */
 export const getSessionProfileSFn = createServerFn({ method: "GET" })
 	.validator(getSessionProfileSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => getSessionDistroProfile(data.sessionId));
 
 /** 批量探测远程工具可用性（结果按会话缓存，TTL 60s；refresh 时强制重探） */
 export const probeToolsSFn = createServerFn({ method: "POST" })
 	.validator(probeToolsSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) =>
 		probeRemoteTools(data.sessionId, data.tools, { refresh: data.refresh }),
 	);
@@ -32,11 +35,13 @@ export const probeToolsSFn = createServerFn({ method: "POST" })
 /** 查询工具在当前会话发行版下的安装信息（一键 / 手动安装引导） */
 export const getToolInstallInfoSFn = createServerFn({ method: "GET" })
 	.validator(installToolSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => getToolInstallInfo(data.sessionId, data.toolId));
 
 /** 一键安装：包管理器写操作 → review 审批 → 批准重放执行（无绕过路径） */
 export const installToolSFn = createServerFn({ method: "POST" })
 	.validator(installToolSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		const stdout = await installTool(data.sessionId, data.toolId);
 		return { ok: true, stdout };

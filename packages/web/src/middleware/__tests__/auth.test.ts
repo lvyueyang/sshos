@@ -1,32 +1,87 @@
 /**
- * 全局鉴权豁免逻辑单元测试（决策记录 D21）
+ * 鉴权中间件测试：AuthError 语义 + resolveAuthContext 鉴权分支
+ * （bootstrap 未 ready 503 / 未配置 401 / token 缺失或无效 401 / 有效放行）
  */
 
-import { describe, expect, it } from "vitest";
-import { registerPublicSfn } from "#/lib/public-sfns/public-sfns";
-import { isProtected } from "../auth";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("isProtected（全局鉴权豁免）", () => {
-	it("未注册公开的 SFn 一律受保护", () => {
-		expect(isProtected("/_serverFn/abc123", "serverFn")).toBe(true);
+const { mockGetBootstrapStatus, mockIsConfigured, mockVerifyJwt } = vi.hoisted(
+	() => ({
+		mockGetBootstrapStatus: vi.fn(),
+		mockIsConfigured: vi.fn(),
+		mockVerifyJwt: vi.fn(),
+	}),
+);
+
+vi.mock("#/services/bootstrap/status", () => ({
+	getBootstrapStatus: mockGetBootstrapStatus,
+}));
+
+vi.mock("#/services/auth", () => ({
+	readServerConfig: () => ({ serverSecret: "test-secret" }),
+	isConfigured: mockIsConfigured,
+	verifyJwt: mockVerifyJwt,
+}));
+
+import { AuthError, resolveAuthContext } from "#/middleware/auth-guard";
+
+describe("AuthError", () => {
+	it("携带 statusCode，name 为 AuthError", () => {
+		const err = new AuthError("未登录或登录已过期", 401);
+		expect(err.statusCode).toBe(401);
+		expect(err.name).toBe("AuthError");
+		expect(err).toBeInstanceOf(Error);
+	});
+});
+
+describe("resolveAuthContext", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
 	});
 
-	it("注册为公开的 SFn 豁免（auth setup/login/status 等）", () => {
-		const url = "/_serverFn/public-login";
-		registerPublicSfn(url);
-		expect(isProtected(url, "serverFn")).toBe(false);
+	it("bootstrap 未 ready 时抛 503（初始化中，业务一律拒绝）", async () => {
+		mockGetBootstrapStatus.mockReturnValue({
+			phase: "running",
+			step: "migrations",
+		});
+		await expect(resolveAuthContext("token")).rejects.toMatchObject({
+			statusCode: 503,
+		});
+		expect(mockIsConfigured).not.toHaveBeenCalled();
 	});
 
-	it("/api/* 路由受保护（health 除外）", () => {
-		expect(isProtected("/api/anything", "router")).toBe(true);
+	it("未配置启动密码时抛 401", async () => {
+		mockGetBootstrapStatus.mockReturnValue({ phase: "ready", step: null });
+		mockIsConfigured.mockReturnValue(false);
+		await expect(resolveAuthContext("token")).rejects.toMatchObject({
+			statusCode: 401,
+		});
 	});
 
-	it("/api/health 自检豁免", () => {
-		expect(isProtected("/api/health", "router")).toBe(false);
+	it("token 缺失时抛 401", async () => {
+		mockGetBootstrapStatus.mockReturnValue({ phase: "ready", step: null });
+		mockIsConfigured.mockReturnValue(true);
+		await expect(resolveAuthContext(undefined)).rejects.toMatchObject({
+			statusCode: 401,
+		});
+		expect(mockVerifyJwt).not.toHaveBeenCalled();
 	});
 
-	it("页面与静态资源豁免", () => {
-		expect(isProtected("/", "router")).toBe(false);
-		expect(isProtected("/assets/index-x.js", "router")).toBe(false);
+	it("token 验签失败时抛 401", async () => {
+		mockGetBootstrapStatus.mockReturnValue({ phase: "ready", step: null });
+		mockIsConfigured.mockReturnValue(true);
+		mockVerifyJwt.mockReturnValue(null);
+		await expect(resolveAuthContext("bad-token")).rejects.toMatchObject({
+			statusCode: 401,
+		});
+	});
+
+	it("有效 token 返回鉴权上下文", async () => {
+		mockGetBootstrapStatus.mockReturnValue({ phase: "ready", step: null });
+		mockIsConfigured.mockReturnValue(true);
+		mockVerifyJwt.mockReturnValue({ sub: "local" });
+		await expect(resolveAuthContext("valid-token")).resolves.toEqual({
+			authenticated: true,
+		});
 	});
 });

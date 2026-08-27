@@ -9,6 +9,7 @@
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createServerFn } from "@tanstack/react-start";
+import { authMiddleware } from "#/middleware/auth-guard";
 import { ensureSftp, sftpManager } from "#/services/ssh/sftp/sftp.server";
 import {
 	sftpDeleteSchema,
@@ -22,6 +23,7 @@ import {
 /** 列出远程目录内容 */
 export const sftpListSFn = createServerFn({ method: "GET" })
 	.validator(sftpListSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		await ensureSftp(data.sessionId);
 		return sftpManager.list(data.sessionId, data.path);
@@ -30,6 +32,7 @@ export const sftpListSFn = createServerFn({ method: "GET" })
 /** 获取文件 / 目录元信息 */
 export const sftpStatSFn = createServerFn({ method: "GET" })
 	.validator(sftpStatSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		await ensureSftp(data.sessionId);
 		return sftpManager.stat(data.sessionId, data.path);
@@ -38,6 +41,7 @@ export const sftpStatSFn = createServerFn({ method: "GET" })
 /** 新建远程目录（低风险新建，safe 放行） */
 export const sftpMkdirSFn = createServerFn({ method: "POST" })
 	.validator(sftpMkdirSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		await ensureSftp(data.sessionId);
 		await sftpManager.mkdir(data.sessionId, data.path);
@@ -47,6 +51,7 @@ export const sftpMkdirSFn = createServerFn({ method: "POST" })
 /** 删除远程文件 / 目录（递归删除；用户手动操作，不挂策略） */
 export const sftpDeleteSFn = createServerFn({ method: "POST" })
 	.validator(sftpDeleteSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		await ensureSftp(data.sessionId);
 		await sftpManager.delete(data.sessionId, data.path);
@@ -56,6 +61,7 @@ export const sftpDeleteSFn = createServerFn({ method: "POST" })
 /** 重命名 / 移动（SFTP rename 原语覆盖两者；用户手动操作，不挂策略） */
 export const sftpRenameSFn = createServerFn({ method: "POST" })
 	.validator(sftpRenameSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		await ensureSftp(data.sessionId);
 		await sftpManager.rename(data.sessionId, data.oldPath, data.newPath);
@@ -103,6 +109,7 @@ function parseUploadForm(data: unknown) {
 /** 流式下载远程文件（SFn 流式返回 ReadableStream<Uint8Array>，客户端组装 Blob） */
 export const sftpDownloadSFn = createServerFn({ method: "GET" })
 	.validator(sftpDownloadSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		await ensureSftp(data.sessionId);
 		const stream = sftpManager.createReadStream(data.sessionId, data.path);
@@ -114,6 +121,7 @@ export const sftpDownloadSFn = createServerFn({ method: "GET" })
 /** 流式上传（SFn FormData，multipart 流式写远程文件；低风险新建，不挂策略） */
 export const sftpUploadSFn = createServerFn({ method: "POST" })
 	.validator(parseUploadForm)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		const remotePath = sanitizeUpload(data.dirPath, data.file.name);
 		if (!remotePath) throw new Error("非法文件名或路径");

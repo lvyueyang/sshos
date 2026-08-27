@@ -4,10 +4,12 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { authMiddleware } from "#/middleware/auth-guard";
 import { metricsStreamSchema } from "./metrics.schemas";
 
 export const metricsStreamSFn = createServerFn({ method: "GET" })
 	.validator(metricsStreamSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		const [{ Readable }, { metricsCollector }] = await Promise.all([
 			import("node:stream"),

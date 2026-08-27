@@ -2,7 +2,7 @@
  * Nitro server entry：根目录 server.ts 被 Nitro 自动检测为服务端入口。
  * 业务 RPC / 流式 / health 全部由 SFn 与 Server Route 承载，零 Hono（决策记录 D2）。
  * 启动流程：先按 server.json 设置监听地址（默认仅本机，见 D21），随后**非阻塞**触发
- * bootstrap（数据库迁移 + 预置数据，后台执行，fail-fast；前端经 /api/bootstrap/status
+ * bootstrap（数据库迁移 + 预置数据，后台执行，fail-fast；前端经 bootstrapStatusSFn
  * 渲染初始化载入界面）；注册信号处理器，退出前强制刷新审计缓冲。
  * SSR 由 tanstackStart 的 Nitro 集成（ssr service）自动处理。
  */
@@ -10,11 +10,6 @@
 import { readServerConfig } from "#/services/auth/core/config";
 import { runBootstrap } from "#/services/bootstrap/bootstrap";
 import { batchWriter } from "./src/lib/batch-writer/batch-writer.server";
-
-// 公开 SFn（认证 / 初始化状态）在模块顶层注册鉴权豁免集合，
-// server 入口强制 import 确保请求到达前集合已填充
-import "#/services/auth/auth.functions";
-import "#/services/bootstrap/bootstrap.functions";
 
 // 监听地址必须显式设置：Nitro preset 未设 NITRO_HOST 时默认绑定所有接口（0.0.0.0）。
 // server.json 的 port/bind 优先（手工编辑后重启生效）；未配置或未指定时收紧到仅本机。

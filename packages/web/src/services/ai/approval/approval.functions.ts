@@ -6,6 +6,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { batchWriter } from "#/lib/batch-writer/batch-writer.server";
+import { authMiddleware } from "#/middleware/auth-guard";
 import { approvalRegistry } from "./registry";
 
 const approvalSchema = z.object({
@@ -20,6 +21,7 @@ const listPendingSchema = z.object({
 /** 审批决策 SFn：approved 重放执行原操作，rejected 丢弃 */
 export const approvalSFn = createServerFn({ method: "POST" })
 	.validator(approvalSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		const entry = approvalRegistry.consume(data.requestId);
 		if (!entry) {
@@ -58,6 +60,7 @@ export const approvalSFn = createServerFn({ method: "POST" })
 /** 列出某会话的挂起审批（写操作被 review 拦截后，渲染层据此弹出审批） */
 export const listPendingApprovalsSFn = createServerFn({ method: "GET" })
 	.validator(listPendingSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		return approvalRegistry.listBySession(data.sessionId);
 	});

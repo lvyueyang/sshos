@@ -5,12 +5,14 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { authMiddleware } from "#/middleware/auth-guard";
 import { promptGuardMiddleware } from "../security/prompt-guard";
 import { aiChatSchema, execCommandSchema } from "./chat.schemas";
 
 /** 非交互式命令执行：策略在 exec.service（block/review/safe），SFn 为包装 */
 export const execCommandSFn = createServerFn({ method: "POST" })
 	.validator(execCommandSchema)
+	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
 		const { execWithPolicy } = await import(
 			"#/services/ssh/command/exec.service"
@@ -22,7 +24,7 @@ export const execCommandSFn = createServerFn({ method: "POST" })
 /** AI 对话：返回 ReadableStream<AiTextDelta> 增量流，prompt 注入检测由 promptGuard 承担 */
 export const aiChatSFn = createServerFn({ method: "POST" })
 	.validator(aiChatSchema)
-	.middleware([promptGuardMiddleware])
+	.middleware([authMiddleware, promptGuardMiddleware])
 	.handler(async ({ data }) => {
 		const { createAiChatStream } = await import(
 			"#/services/ai/chat/chat.server"

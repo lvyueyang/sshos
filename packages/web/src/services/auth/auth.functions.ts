@@ -1,11 +1,10 @@
 /**
  * 认证 SFn（登录前可访问的公开接口）：
  * setupSFn 首次配置 / loginSFn 登录 / authStatusSFn 状态查询。
- * 定义后立即注册到公开集合（lib/public-sfns），全局鉴权中间件据此豁免。
+ * 不挂鉴权中间件，天然公开（fsdx 范式：需鉴权的 SFn 才挂 authMiddleware）。
  */
 
 import { createServerFn } from "@tanstack/react-start";
-import { registerPublicSfn } from "#/lib/public-sfns/public-sfns";
 import { authStatusSchema, passwordSchema } from "./auth.schemas";
 import { getAuthStatus, loginServer, setupServer } from "./auth.server";
 
@@ -15,7 +14,6 @@ export const setupSFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		return { token: setupServer(data.password) };
 	});
-registerPublicSfn(setupSFn.url);
 
 /** 登录：校验启动密码，返回 JWT（密码错误 / 未配置时抛错） */
 export const loginSFn = createServerFn({ method: "POST" })
@@ -23,10 +21,8 @@ export const loginSFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		return { token: loginServer(data.password) };
 	});
-registerPublicSfn(loginSFn.url);
 
 /** 认证状态：configured / authenticated（入参携带客户端 token 用于验签） */
 export const authStatusSFn = createServerFn({ method: "GET" })
 	.validator(authStatusSchema)
 	.handler(async ({ data }) => getAuthStatus(data.token));
-registerPublicSfn(authStatusSFn.url);
