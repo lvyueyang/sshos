@@ -27,7 +27,7 @@
 
 | 状态 | 待办 | 说明 | 参考 |
 | --- | --- | --- | --- |
-| 待做 | 跨连接文件复制 | 一连接一 Tab，文件复制目前只限单连接内（同 Tab SFTP 会话内 rename/move）。跨连接复制需本地 web 服务为中继：源连接 SFTP 读取 → 本地流式透传 → 目标连接 SFTP 写入，复用 `services/transfer` 流式能力避免整文件进内存；写入目标为低风险新建，读取方不应触发策略，最终在目标侧落一条安全操作（与上传同权）。UI 落地形态：文件管理器「复制到其他连接…」入口 + 目标连接/目录选择 | `services/transfer/transfer.server.ts`、`services/ssh/sftp/sftp.server.ts`、`apps/files/files.functions.ts`、`apps/files/FileManager.tsx` |
+| 待做 | 跨连接文件复制 | 一连接一 Tab，文件复制目前只限单连接内（同 Tab SFTP 会话内 rename/move）。跨连接复制需本地 web 服务为中继：源连接 SFTP 读取 → 本地流式透传 → 目标连接 SFTP 写入，复用 SFn 流式能力（`sftpDownloadSFn` 读 + `sftpUploadSFn` 写）避免整文件进内存；写入目标为低风险新建，读取方不应触发策略，最终在目标侧落一条安全操作（与上传同权）。UI 落地形态：文件管理器「复制到其他连接…」入口 + 目标连接/目录选择 | `apps/files/files.functions.ts`、`services/ssh/sftp/sftp.server.ts`、`apps/files/FileManager.tsx` |
 | 待做 | 拖动跨连接复制 | 两个不同 Tab 的文件管理器窗口之间 HTML5 拖拽复制：把源连接 + 路径上下文随 DnD payload 传递，落到目标窗口时经「跨连接复制 SFn」执行，并区分拖拽复制 / 移动（同连接内已支持 rename 移动） | `apps/files/FileManager.tsx`、`apps/files/app.ts` |
 | 待做 | 快捷键复制粘贴 | 文件管理器内 Ctrl+C 选中复制、Ctrl+V 粘贴；支持粘贴到另一连接的文件管理器窗口（跨连接目标），与拖拽同一套跨连接复制 SFn 底层 | `apps/files/FileManager.tsx` |
 | 待做 | 全局 Agent 跨连接操作 | 当前 AI 面板按 Tab 挂载、工具 handler 绑定单连接 sessionId；跨连接复制等操作需要「全局 Agent」（不绑定单连接 Tab 的面板）作为第二消费者复用同一读写网关，工具 handler 可携带源/目标连接参数，进而支持跨连接复制、对比、同步等编排 | `services/ai/pi-agent.ts`、`apps/ai/AiPanel.tsx`、`services/ssh/command/exec.service.ts` |

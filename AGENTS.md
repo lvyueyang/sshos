@@ -37,10 +37,16 @@ ssh-os/
 │   │       ├── components/       # 通用桌面组件（Sidebar/Desktop/Taskbar/Window）
 │   │       ├── stores/           # Zustand 桌面 UI 状态（窗口/Tab/焦点）
 │   │       ├── middleware/       # auth / sf-error-logger
-│   │       ├── services/         # 领域服务层：ssh（连接/PTY/SFTP/命令执行）、ai（pi-agent/prompt-guard/
-│   │       │                     #   chat.server/chat.functions/ai-config）、metrics（collector/server）、
-│   │       │                     #   capabilities（distro-profile/probe/install）、policy（classifier/rules）、
-│   │       │                     #   ai/approval（AI / 自动操作审批）
+│   │       ├── i18n/             # 国际化（i18n.ts 初始化 + locales/zh-CN）
+│   │       ├── utils/            # 通用工具（utils.ts 的 cn()，shadcn 组件依赖）
+│   │       ├── lib/              # 通用库（每模块一文件夹，无 index；仅服务端用 .server.ts 后缀）：
+│   │       │                     #   auth-client / batch-writer(.server) / format / http-guard /
+│   │       │                     #   logger(.server) / logs-format / paths(.server) / public-sfns / request
+│   │       ├── services/         # 领域服务层（内部按功能子域分层）：ssh（command/connection/pty/sftp）、
+│   │       │                     #   ai（approval/chat/config/security + pi-agent）、metrics（collection）、
+│   │       │                     #   capabilities（distro/remote/tools）、settings（connections/groups/preferences）、
+│   │       │                     #   logs（audit/storage/terminal）、auth（core + 三件套）、
+│   │       │                     #   policy（classifier/rules/types）、bootstrap、transfer
 │   │       └── db/               # node:sqlite + drizzle（index/schema/migrate）
 │   └── desktop/                  # Electron 壳（main/bootstrap/updater）
 └── docs/                         # 01 项目概述 / 02 技术架构 / 03 界面设计 / 04 决策记录 / 05 界面框图 / 06 UI 重构方案 / 07 UI 范式与规则 / TODO 待办清单
@@ -260,7 +266,7 @@ ssh-os/
 - **策略引擎挂载边界**：只服务 AI / 自动操作路径（`execWithPolicy`：AI 工具命令、`execCommandSFn`、安装引导）；用户手动操作（终端输入、文件操作）不过策略；`sendInputSFn` 逐键流不挂策略（见 docs/02 §5.3）
 - **审批无绕过路径**：review 级命令必须经 Approval Registry + `approvalSFn` 重放执行，不存在"直接执行"路径
 - **Prompt 注入隔离**：systemPrompt 代码硬编码，用户消息不得覆盖；`chatSchema` 排除 `system` 角色
-- **全局请求鉴权（D21）**：SFn 与 `/api/*` 端点经 TanStack request 中间件统一校验 `X-SSHOS-TOKEN`（JWT，HS256，与 server.json `serverSecret` 验签）；**公开 SFn**（`lib/public-sfns.ts` 注册，认证 setup/login/status 与 bootstrap 状态）与 `/api/health`、页面/静态资源豁免；未配置启动密码时业务请求一律 401；bootstrap 未 ready 时业务请求一律 503；渲染层请求统一经 `lib/api-fetch.ts` / `serverFns.fetch` 携带 token（存 localStorage，`lib/auth-client.ts`），禁止绕过
+- **全局请求鉴权（D21）**：SFn 与 `/api/*` 端点经 TanStack request 中间件统一校验 `X-SSHOS-TOKEN`（JWT，HS256，与 server.json `serverSecret` 验签）；**公开 SFn**（`lib/public-sfns.ts` 注册，认证 setup/login/status 与 bootstrap 状态）与 `/api/health`、页面/静态资源豁免；未配置启动密码时业务请求一律 401；bootstrap 未 ready 时业务请求一律 503；渲染层请求统一经 `serverFns.fetch`（SFn）携带 token（存 localStorage，`lib/auth-client.ts`），禁止绕过
 - 凭据明文存储于服务端 SQLite（D23），SSH 密钥永不经过 renderer
 
 ## 错误处理与通知
