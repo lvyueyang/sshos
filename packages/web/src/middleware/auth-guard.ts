@@ -61,6 +61,7 @@ export const authMiddleware = createMiddleware().server(async ({ next }) => {
 /**
  * Server Route 鉴权守卫：组合 authMiddleware，捕获 AuthError 转为 HTTP 状态码 JSON，
  * 避免中间件抛错被框架统一转 500（对标 fsdx adminPermRouteGuard）。
+ * 当前无挂载点（业务接口均走 SFn；/api/health 天然豁免），供未来 Server Route 使用。
  */
 export function authRouteGuard() {
 	return createMiddleware()
