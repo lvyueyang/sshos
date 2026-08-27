@@ -1,5 +1,7 @@
 /**
- * logger 保留天数清理单元测试：边界日期、非日志文件 / 非日期命名文件不误删
+ * logger 保留天数清理单元测试：边界日期、非日志文件 / 非日期命名文件不误删。
+ * logger.server 模块顶层创建单例（import 时即触发 DailyRotatingStream 建流 + 清理），
+ * 故用 vi.hoisted 在 import 前把 SSHOS_DATA_DIR 指向临时目录，避免真实清理开发日志目录。
  */
 
 import {
@@ -11,7 +13,23 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
+
+/** import 前（vi.hoisted 提升到文件最顶）隔离数据目录，防止污染 ~/.ssh-os-dev/logs */
+const isolatedDataDir = vi.hoisted(() => {
+	const dir = `${process.env.TMPDIR ?? "/tmp"}/sshos-logger-isolated-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+	process.env.SSHOS_DATA_DIR = dir;
+	return dir;
+});
+
 import {
 	cleanupExpiredLogs,
 	DEFAULT_RETENTION_DAYS,
@@ -25,6 +43,11 @@ beforeEach(() => {
 
 afterEach(() => {
 	rmSync(dir, { recursive: true, force: true });
+});
+
+afterAll(() => {
+	delete process.env.SSHOS_DATA_DIR;
+	rmSync(isolatedDataDir, { recursive: true, force: true });
 });
 
 /** 写入一个当日日期命名的日志文件 */

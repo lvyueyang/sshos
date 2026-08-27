@@ -48,6 +48,7 @@ function toDateString(date = new Date()): string {
 /**
  * 清理超出保留天数的历史日志文件（文件名 YYYY-MM-DD.log）。
  * 保留 [today - retentionDays + 1, today] 区间内的文件；同步执行，目录读取失败不抛。
+ * 截止日期用自然日减法（setDate 日粒度过期），避免跨夏令时切换时 24h 乘法偏移一天。
  */
 export function cleanupExpiredLogs(
 	dir: string,
@@ -62,9 +63,9 @@ export function cleanupExpiredLogs(
 		return;
 	}
 	// 截止日期：早于等于该日期的文件删除（保留恰好 retentionDays 个日文件）
-	const cutoff = toDateString(
-		new Date(now.getTime() - retentionDays * 86_400_000),
-	);
+	const cutoffDate = new Date(now);
+	cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+	const cutoff = toDateString(cutoffDate);
 	for (const name of entries) {
 		if (!name.endsWith(".log")) continue;
 		const datePart = name.slice(0, 10);
