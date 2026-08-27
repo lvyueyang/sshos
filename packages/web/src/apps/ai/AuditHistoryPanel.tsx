@@ -11,7 +11,7 @@ import {
 	formatTime,
 	LEVEL_COLOR,
 	truncateCommand,
-} from "#/lib/logs-format/logs-format";
+} from "#/lib/logger/logs-format";
 import { listLogsSFn } from "#/services/logs/audit/audit.functions";
 
 interface AuditHistoryPanelProps {
