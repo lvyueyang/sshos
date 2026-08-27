@@ -9,18 +9,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { RemoteToolRequirement } from "#/app-framework/types";
 import {
-	approvalSFn,
-	listPendingApprovalsSFn,
-} from "#/approval/approval.functions";
-import {
 	ApprovalDialog,
 	type PendingApproval,
 } from "#/components/ApprovalDialog";
 import {
+	approvalSFn,
+	listPendingApprovalsSFn,
+} from "#/services/ai/approval/approval.functions";
+import {
 	getToolInstallInfoSFn,
 	installToolSFn,
 	probeToolsSFn,
-} from "#/services/capabilities/capabilities.functions";
+} from "#/services/capabilities/remote/capabilities.functions";
 import { useUiStore } from "#/stores/ui";
 import { useDesktopStore } from "#/stores/windows";
 

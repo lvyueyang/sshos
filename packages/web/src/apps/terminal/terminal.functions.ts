@@ -1,7 +1,7 @@
 /**
  * terminal 应用 SFn 包装（docs 技术架构 §5.4）：
  * connect / createPty / sendInput（不挂策略）/ resizePty / disconnect。
- * 纯 SSH 逻辑在 services/ssh/ssh.server.ts。
+ * 纯 SSH 逻辑在 services/ssh/connection/ssh.server.ts。
  */
 
 import { createServerFn } from "@tanstack/react-start";
@@ -10,7 +10,7 @@ import {
 	disconnectSession,
 	ptyManager,
 	sshManager,
-} from "#/services/ssh/ssh.server";
+} from "#/services/ssh/connection/ssh.server";
 import {
 	closePtySchema,
 	connectSchema,

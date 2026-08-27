@@ -7,7 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button } from "#/components/ui/button";
-import { getSystemInfoSFn } from "#/services/settings/settings.functions";
+import { getSystemInfoSFn } from "#/services/settings/connections/settings.functions";
 import {
 	type FontScale,
 	type ThemeDensity,

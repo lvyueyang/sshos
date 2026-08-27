@@ -57,7 +57,7 @@ import {
 	reorderConnectionsSFn,
 	reorderGroupsSFn,
 	updateGroupSFn,
-} from "#/services/settings/settings.functions";
+} from "#/services/settings/connections/settings.functions";
 import { useSettingsUiStore } from "#/stores/settings-ui";
 import { type ConnectionPrefill, useUiStore } from "#/stores/ui";
 import { useDesktopStore } from "#/stores/windows";

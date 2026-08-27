@@ -12,7 +12,7 @@ import {
 	getAiConfigSFn,
 	listModelsSFn,
 	setDefaultModelSFn,
-} from "#/services/ai-config/ai-config.functions";
+} from "#/services/ai/config/ai-config.functions";
 import { ProviderDrawer } from "./ProviderDrawer";
 import type { AiProviderSummary } from "./types";
 

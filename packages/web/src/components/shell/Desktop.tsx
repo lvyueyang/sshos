@@ -22,7 +22,7 @@ import {
 	getConnectionSettingSFn,
 	recordAuditSFn,
 	setConnectionSettingSFn,
-} from "#/services/settings/settings.functions";
+} from "#/services/settings/connections/settings.functions";
 import { type TabState, useDesktopStore } from "#/stores/windows";
 import { Taskbar } from "./Taskbar";
 import { Window } from "./Window";

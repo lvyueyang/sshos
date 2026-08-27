@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { beforeAll, describe, expect, it } from "vitest";
 import { getDbPath, runMigrations } from "../../../db/migrate";
-import * as settings from "../settings.server";
+import * as settings from "../connections/settings.server";
 
 const dataDir = mkdtempSync(join(tmpdir(), "sshos-settings-"));
 process.env.SSHOS_DATA_DIR = dataDir;

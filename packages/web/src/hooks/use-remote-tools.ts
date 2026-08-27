@@ -5,7 +5,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { probeToolsSFn } from "#/services/capabilities/capabilities.functions";
+import { probeToolsSFn } from "#/services/capabilities/remote/capabilities.functions";
 
 interface UseRemoteToolsOptions {
 	sessionId: string | undefined;

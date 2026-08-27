@@ -13,8 +13,8 @@ import {
 	listGroupsSFn,
 	testConnectionSFn,
 	updateConnectionSFn,
-} from "#/services/settings/settings.functions";
-import type { ConnectionInput } from "#/services/settings/settings.schemas";
+} from "#/services/settings/connections/settings.functions";
+import type { ConnectionInput } from "#/services/settings/connections/settings.schemas";
 import type { ConnectionPrefill } from "#/stores/ui";
 
 const EMPTY_INPUT: ConnectionInput = {
@@ -80,8 +80,8 @@ export function ConnectionDrawer({
 				.fetchQuery({
 					queryKey: ["connections"],
 					queryFn: () =>
-						import("#/services/settings/settings.functions").then((m) =>
-							m.listConnectionsSFn(),
+						import("#/services/settings/connections/settings.functions").then(
+							(m) => m.listConnectionsSFn(),
 						),
 				})
 				.then((rows) => {

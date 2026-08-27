@@ -18,22 +18,6 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
-  packages/core:
-    dependencies:
-      ssh2:
-        specifier: ^1.17.0
-        version: 1.17.0
-    devDependencies:
-      '@types/node':
-        specifier: ^24.13.3
-        version: 24.13.3
-      '@types/ssh2':
-        specifier: ^1.15.5
-        version: 1.15.5
-      vitest:
-        specifier: ^4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
-
   packages/desktop:
     dependencies:
       electron-updater:
@@ -55,15 +39,6 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
-
-  packages/policy:
-    devDependencies:
-      '@types/node':
-        specifier: ^24.13.3
-        version: 24.13.3
-      vitest:
-        specifier: ^4.1.10
-        version: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/web:
     dependencies:
@@ -88,12 +63,6 @@ importers:
       '@remixicon/react':
         specifier: ^4.9.0
         version: 4.9.0(react@19.2.8)
-      '@sshos/core':
-        specifier: workspace:*
-        version: link:../core
-      '@sshos/policy':
-        specifier: workspace:*
-        version: link:../policy
       '@tanstack/ai-react':
         specifier: ^0.19.3
         version: 0.19.3(@opentelemetry/api@1.9.0)(@tanstack/ai@0.45.1(@opentelemetry/api@1.9.0)(zod@4.4.3))(@types/react@19.2.18)(react@19.2.8)(zod@4.4.3)
@@ -203,6 +172,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.4(@types/react@19.2.18)
+      '@types/ssh2':
+        specifier: ^1.15.5
+        version: 1.15.5
       '@vitejs/plugin-react':
         specifier: ^6.0.5
         version: 6.0.5(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
@@ -2745,10 +2717,6 @@ packages:
   abbrev@4.0.0:
     resolution: {integrity: sha512-a1wflyaL0tHtJSmLSOVybYhy22vRih4eduhhrkcjgrWGnRfrZtovJ2FRjxuTtkkj47O/baf0R86QU5OuYpz8fA==}
     engines: {node: ^20.17.0 || >=22.9.0}
-
-  agent-base@7.1.0:
-    resolution: {integrity: sha512-o/zjMZRhJxny7OyEF+Op8X+efiELC7k7yOjMzgfzVqOzXqkBkWI79YoTdOtsuWd5BWhAGAuOY/Xa6xpiaWXiNg==}
-    engines: {node: '>= 14'}
 
   agent-base@7.1.2:
     resolution: {integrity: sha512-JVzqkCNRT+VfqzzgPWDPnwvDheSAUdiMUn3NoLXpDJF5lRqeJqyC9iGsAxIOAW+mzIdq+uP1TvcX6bMtrH0agg==}
@@ -7545,12 +7513,6 @@ snapshots:
 
   abbrev@4.0.0: {}
 
-  agent-base@7.1.0(supports-color@7.1.0):
-    dependencies:
-      debug: 4.4.3(supports-color@7.1.0)
-    transitivePeerDependencies:
-      - supports-color
-
   agent-base@7.1.2(supports-color@7.1.0):
     dependencies:
       debug: 4.4.3(supports-color@7.1.0)
@@ -8424,7 +8386,7 @@ snapshots:
 
   http-proxy-agent@7.0.2(supports-color@7.1.0):
     dependencies:
-      agent-base: 7.1.0(supports-color@7.1.0)
+      agent-base: 7.1.2(supports-color@7.1.0)
       debug: 4.4.3(supports-color@7.1.0)
     transitivePeerDependencies:
       - supports-color

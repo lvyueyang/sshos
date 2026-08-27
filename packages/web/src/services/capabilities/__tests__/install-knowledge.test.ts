@@ -3,7 +3,10 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { buildInstallCommand, INSTALL_KNOWLEDGE } from "../install-knowledge";
+import {
+	buildInstallCommand,
+	INSTALL_KNOWLEDGE,
+} from "../tools/install-knowledge";
 
 describe("buildInstallCommand", () => {
 	it("各包管理器生成对应安装命令", () => {

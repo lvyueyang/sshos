@@ -15,10 +15,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import {
-	approvalSFn,
-	listPendingApprovalsSFn,
-} from "#/approval/approval.functions";
-import {
 	ApprovalDialog,
 	type PendingApproval,
 } from "#/components/ApprovalDialog";
@@ -29,10 +25,14 @@ import {
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { cn } from "#/lib/utils";
+import {
+	approvalSFn,
+	listPendingApprovalsSFn,
+} from "#/services/ai/approval/approval.functions";
+import { aiChatSFn } from "#/services/ai/chat/chat.functions";
+import type { AiStreamChunk } from "#/services/ai/chat/chat.schemas";
 import { useUiStore } from "#/stores/ui";
 import { AuditHistoryPanel } from "./AuditHistoryPanel";
-import { aiChatSFn } from "./ai.functions";
-import type { AiStreamChunk } from "./ai.schemas";
 
 interface AiPanelProps {
 	sessionId: string;

@@ -1,6 +1,7 @@
 /**
  * ai 应用插件（docs 技术架构 §6）：window surface，exec + ai 能力。
- * 面板组件消费 /api/ai/chat SSE 流；AI 工具命令经 execCommandSFn（Policy Engine）二次拦截。
+ * 面板组件消费 services/ai 的 aiChatSFn 增量流；AI 工具命令经 execWithPolicy
+ * （三段式策略）二次拦截。服务端 AI 逻辑见 services/ai/。
  */
 
 import type {

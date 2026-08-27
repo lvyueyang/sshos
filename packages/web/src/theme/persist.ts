@@ -6,7 +6,7 @@
 import {
 	getGlobalSettingSFn,
 	setGlobalSettingSFn,
-} from "#/services/settings/settings.functions";
+} from "#/services/settings/connections/settings.functions";
 import type {
 	FontScale,
 	ThemeDensity,

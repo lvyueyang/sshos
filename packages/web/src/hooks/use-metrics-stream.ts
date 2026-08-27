@@ -3,9 +3,9 @@
  * 流式数据仅组件内消费，不进全局 store；NDJSON 逐行解析，组件卸载自动中断。
  */
 
-import type { MetricsSnapshot } from "@sshos/core";
 import { useEffect, useState } from "react";
-import { metricsStreamSFn } from "#/services/metrics/metrics.functions";
+import { metricsStreamSFn } from "#/services/metrics/collection/metrics.functions";
+import type { MetricsSnapshot } from "#/services/metrics/collection/metrics-collector";
 
 interface UseMetricsStreamResult {
 	points: MetricsSnapshot[];

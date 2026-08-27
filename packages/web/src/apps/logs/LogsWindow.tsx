@@ -34,7 +34,7 @@ import {
 	TYPE_COLOR,
 	TYPE_LABEL,
 } from "#/lib/logs-format";
-import { listLogsSFn } from "#/services/logs/logs.functions";
+import { listLogsSFn } from "#/services/logs/audit/audit.functions";
 
 interface LogsWindowProps {
 	sessionId: string;

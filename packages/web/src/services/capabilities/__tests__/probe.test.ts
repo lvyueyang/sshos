@@ -3,7 +3,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { assertToolName, buildProbeCommand, parseProbeOutput } from "../probe";
+import {
+	assertToolName,
+	buildProbeCommand,
+	parseProbeOutput,
+} from "../tools/probe";
 
 describe("buildProbeCommand", () => {
 	it("按固定模板生成 for 循环探测命令", () => {

@@ -47,7 +47,7 @@ export const Route = defineServerRoute("/api/sftp/upload", {
 					await Promise.all([
 						import("node:stream"),
 						import("node:stream/promises"),
-						import("#/services/sftp/sftp.server"),
+						import("#/services/ssh/sftp/sftp.server"),
 					]);
 				await ensureSftp(sessionId);
 				const writeStream = sftpManager.createWriteStream(

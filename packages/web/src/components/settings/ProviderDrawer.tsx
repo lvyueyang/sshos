@@ -13,7 +13,7 @@ import {
 	deleteCustomProviderSFn,
 	saveApiKeySFn,
 	saveCustomProviderSFn,
-} from "#/services/ai-config/ai-config.functions";
+} from "#/services/ai/config/ai-config.functions";
 import type {
 	AiProviderSummary,
 	CompatConfig,

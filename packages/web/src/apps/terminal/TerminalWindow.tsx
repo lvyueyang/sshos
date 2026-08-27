@@ -6,7 +6,7 @@
 
 import type { ITheme, Terminal as TerminalType } from "@xterm/xterm";
 import { useEffect, useRef, useState } from "react";
-import { recordTerminalCommandSFn } from "#/services/logs/logs.functions";
+import { recordTerminalCommandSFn } from "#/services/logs/terminal/logs.functions";
 import { createCommandTracker } from "./command-tracker";
 import {
 	closePtySFn,

@@ -2,6 +2,7 @@ node_modules/
 dist/
 .output/
 .tmp/
+.tanstack/
 *.log
 .DS_Store
 *.local

@@ -7,7 +7,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect } from "react";
-import { listConnectionsSFn } from "#/services/settings/settings.functions";
+import { listConnectionsSFn } from "#/services/settings/connections/settings.functions";
 import { useUiStore } from "#/stores/ui";
 import { useConnect } from "./use-connect";
 

@@ -1,7 +1,8 @@
 /**
  * 文件管理器窗口（docs 界面设计 §5 / W2）：SFTP 目录浏览 + 右键操作 + 上传下载。
  * 目录列表走 TanStack Query（key = sessionId + cwd），增删改后 invalidate 刷新。
- * 右键菜单 / 各操作对话框拆到 FileManagerMenu 与 file-dialogs；写操作一律走 SFn（过 Policy Engine）。
+ * 右键菜单 / 各操作对话框拆到 FileManagerMenu 与 file-dialogs；用户手动写操作
+ * 不经策略引擎（连接器本质），直接走 SFn 执行。
  */
 
 import {
@@ -14,24 +15,16 @@ import {
 	RiRefreshLine,
 	RiUpload2Line,
 } from "@remixicon/react";
-import type { FileInfo } from "@sshos/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import {
-	approvalSFn,
-	listPendingApprovalsSFn,
-} from "#/approval/approval.functions";
 import { AppCapabilities } from "#/components/AppCapabilities";
-import {
-	ApprovalDialog,
-	type PendingApproval,
-} from "#/components/ApprovalDialog";
 import { Button } from "#/components/ui/button";
 import { Progress } from "#/components/ui/progress";
 import { Separator } from "#/components/ui/separator";
 import { Skeleton } from "#/components/ui/skeleton";
 import { apiFetch, authHeaders } from "#/lib/api-fetch";
 import { formatBytes, formatTime } from "#/lib/format";
+import type { FileInfo } from "#/services/ssh/sftp/sftp-manager";
 import { manifest } from "./app";
 import {
 	FileManagerMenu,
@@ -74,7 +67,6 @@ export function FileManager({ sessionId }: FileManagerProps) {
 	>(null);
 	const [uploads, setUploads] = useState<UploadTask[]>([]);
 	const [message, setMessage] = useState<string | null>(null);
-	const [approval, setApproval] = useState<PendingApproval | null>(null);
 
 	const { data: entries = [], isLoading } = useQuery({
 		queryKey: ["sftp", sessionId, cwd],
@@ -92,32 +84,13 @@ export function FileManager({ sessionId }: FileManagerProps) {
 		setTimeout(() => setMessage(null), 2_500);
 	};
 
-	/** 写操作被策略引擎 review 拦截后：查询本会话挂起审批并弹窗 */
-	const handlePolicyIntercept = async () => {
-		try {
-			const pending = await listPendingApprovalsSFn({ data: { sessionId } });
-			if (pending.length > 0) setApproval(pending[0]);
-		} catch {
-			// 查询失败不阻塞：提示拦截即可
-		}
-		flash("操作被策略引擎拦截，等待审批");
-	};
-
-	/** 审批决策：批准（服务端重放执行）或拒绝，随后刷新列表 */
-	const decideApproval = async (decision: "approved" | "rejected") => {
-		if (!approval) return;
-		await approvalSFn({ data: { requestId: approval.requestId, decision } });
-		refresh();
-		flash(decision === "approved" ? "已批准执行" : "已拒绝");
-	};
-
 	const deleteMutation = useMutation({
 		mutationFn: (path: string) => sftpDeleteSFn({ data: { sessionId, path } }),
 		onSuccess: () => {
 			refresh();
 			flash("已删除");
 		},
-		onError: () => void handlePolicyIntercept(),
+		onError: (err) => flash(`删除失败: ${(err as Error).message}`),
 	});
 
 	const renameMutation = useMutation({
@@ -127,7 +100,7 @@ export function FileManager({ sessionId }: FileManagerProps) {
 			refresh();
 			flash("已重命名");
 		},
-		onError: () => void handlePolicyIntercept(),
+		onError: (err) => flash(`重命名失败: ${(err as Error).message}`),
 	});
 
 	const mkdirMutation = useMutation({
@@ -362,15 +335,6 @@ export function FileManager({ sessionId }: FileManagerProps) {
 						setDialog(null);
 					}}
 					onClose={() => setDialog(null)}
-				/>
-			)}
-
-			{/* 审批弹窗（review 级写操作被策略引擎挂起时弹出） */}
-			{approval && (
-				<ApprovalDialog
-					approval={approval}
-					onDecision={(decision) => decideApproval(decision)}
-					onClose={() => setApproval(null)}
 				/>
 			)}
 		</div>

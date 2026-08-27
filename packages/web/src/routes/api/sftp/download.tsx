@@ -19,7 +19,7 @@ export const Route = defineServerRoute("/api/sftp/download", {
 				}
 				const [{ ensureSftp, sftpManager }, { createFileDownloadResponse }] =
 					await Promise.all([
-						import("#/services/sftp/sftp.server"),
+						import("#/services/ssh/sftp/sftp.server"),
 						import("#/services/transfer/transfer.server"),
 					]);
 				await ensureSftp(sessionId);

@@ -1,14 +1,12 @@
 /**
  * files 应用 SFn 包装（docs 技术架构 §5.4）：
- * 目录浏览（list）与低风险新建（mkdir）不挂策略；删除 / 重命名挂 sftpPolicyMiddleware
- * （路径分类，block 抛 PolicyError / review 走审批，见 docs 技术架构 §7.4）。
+ * 目录浏览（list）、低风险新建（mkdir）、删除 / 重命名均不挂策略引擎——
+ * 用户手动文件操作不走策略（SSH 连接器本质，人对自己操作负责）。
  * 纯 SFTP 逻辑在 services/sftp/sftp.server.ts。
  */
 
 import { createServerFn } from "@tanstack/react-start";
-import { auditLogMiddleware } from "#/middleware/audit-log";
-import { sftpPolicyMiddleware } from "#/middleware/policy-engine";
-import { ensureSftp, sftpManager } from "#/services/sftp/sftp.server";
+import { ensureSftp, sftpManager } from "#/services/ssh/sftp/sftp.server";
 import {
 	sftpDeleteSchema,
 	sftpListSchema,
@@ -42,9 +40,8 @@ export const sftpMkdirSFn = createServerFn({ method: "POST" })
 		return { ok: true };
 	});
 
-/** 删除远程文件 / 目录（递归删除，审计在外层包裹策略，挂策略引擎） */
+/** 删除远程文件 / 目录（递归删除；用户手动操作，不挂策略） */
 export const sftpDeleteSFn = createServerFn({ method: "POST" })
-	.middleware([auditLogMiddleware, sftpPolicyMiddleware])
 	.validator(sftpDeleteSchema)
 	.handler(async ({ data }) => {
 		await ensureSftp(data.sessionId);
@@ -52,9 +49,8 @@ export const sftpDeleteSFn = createServerFn({ method: "POST" })
 		return { ok: true };
 	});
 
-/** 重命名 / 移动（审计在外层包裹策略，挂策略引擎，SFTP rename 原语覆盖两者） */
+/** 重命名 / 移动（SFTP rename 原语覆盖两者；用户手动操作，不挂策略） */
 export const sftpRenameSFn = createServerFn({ method: "POST" })
-	.middleware([auditLogMiddleware, sftpPolicyMiddleware])
 	.validator(sftpRenameSchema)
 	.handler(async ({ data }) => {
 		await ensureSftp(data.sessionId);
