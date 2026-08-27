@@ -6,7 +6,7 @@
 
 import { RiTerminalBoxLine } from "@remixicon/react";
 import { Badge } from "#/components/ui/badge";
-import { cn } from "#/lib/utils";
+import { cn } from "#/utils";
 
 /** 命令卡片数据（服务端 tool-call 帧透出） */
 export interface CommandCardData {

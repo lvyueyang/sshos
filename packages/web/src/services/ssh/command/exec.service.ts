@@ -9,7 +9,7 @@ import {
 	batchWriter,
 	type LogAction,
 	type LogResult,
-} from "#/lib/batch-writer";
+} from "#/lib/batch-writer/batch-writer.server";
 import {
 	ApprovalRequiredError,
 	approvalRegistry,

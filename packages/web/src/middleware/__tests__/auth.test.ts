@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { registerPublicSfn } from "#/lib/public-sfns";
+import { registerPublicSfn } from "#/lib/public-sfns/public-sfns";
 import { isProtected } from "../auth";
 
 describe("isProtected（全局鉴权豁免）", () => {
@@ -18,9 +18,7 @@ describe("isProtected（全局鉴权豁免）", () => {
 	});
 
 	it("/api/* 路由受保护（health 除外）", () => {
-		expect(isProtected("/api/pty/1", "router")).toBe(true);
-		expect(isProtected("/api/sftp/download", "router")).toBe(true);
-		expect(isProtected("/api/ai/chat", "router")).toBe(true);
+		expect(isProtected("/api/anything", "router")).toBe(true);
 	});
 
 	it("/api/health 自检豁免", () => {

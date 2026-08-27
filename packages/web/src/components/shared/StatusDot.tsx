@@ -3,7 +3,7 @@
  * online=success / connecting=warning（脉冲）/ error=danger / offline=muted。
  */
 
-import { cn } from "#/lib/utils";
+import { cn } from "#/utils";
 
 export type ConnectionStatus = "online" | "offline" | "connecting" | "error";
 

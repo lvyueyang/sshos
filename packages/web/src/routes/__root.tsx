@@ -19,7 +19,7 @@ import { Sidebar } from "#/components/shell/Sidebar";
 import { TabBar } from "#/components/shell/TabBar";
 import { Toaster } from "#/components/ui/sonner";
 import { useThemeStore } from "#/stores/theme";
-import "#/lib/i18n";
+import "#/i18n";
 import "../globals.css";
 
 export const Route = createRootRoute({

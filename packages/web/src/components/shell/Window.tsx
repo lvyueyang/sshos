@@ -14,8 +14,8 @@ import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "#/components/ui/button";
-import { cn } from "#/lib/utils";
 import { useDesktopStore } from "#/stores/windows";
+import { cn } from "#/utils";
 
 const MIN_W = 400;
 const MIN_H = 300;

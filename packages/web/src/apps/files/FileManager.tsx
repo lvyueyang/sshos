@@ -12,6 +12,7 @@ import {
 	RiFolderAddLine,
 	RiHome5Line,
 	RiLink,
+	RiLoader4Line,
 	RiRefreshLine,
 	RiUpload2Line,
 } from "@remixicon/react";
@@ -19,11 +20,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppCapabilities } from "#/components/AppCapabilities";
 import { Button } from "#/components/ui/button";
-import { Progress } from "#/components/ui/progress";
 import { Separator } from "#/components/ui/separator";
 import { Skeleton } from "#/components/ui/skeleton";
-import { apiFetch, authHeaders } from "#/lib/api-fetch";
-import { formatBytes, formatTime } from "#/lib/format";
+import { formatBytes, formatTime } from "#/lib/format/format";
 import type { FileInfo } from "#/services/ssh/sftp/sftp-manager";
 import { manifest } from "./app";
 import {
@@ -35,19 +34,20 @@ import { DeleteConfirmDialog, MkdirDialog, RenameDialog } from "./file-dialogs";
 import { isDirectory } from "./file-utils";
 import {
 	sftpDeleteSFn,
+	sftpDownloadSFn,
 	sftpListSFn,
 	sftpMkdirSFn,
 	sftpRenameSFn,
+	sftpUploadSFn,
 } from "./files.functions";
 
 interface FileManagerProps {
 	sessionId: string;
 }
 
-/** 上传任务：进度 0-100，错误时携带 message */
+/** 上传任务：filename + 错误（SFn 上传无进度，上传中显示加载态） */
 export interface UploadTask {
 	filename: string;
-	progress: number;
 	error?: string;
 }
 
@@ -269,23 +269,19 @@ export function FileManager({ sessionId }: FileManagerProps) {
 				)}
 			</div>
 
-			{/* 上传队列 */}
+			{/* 上传队列（SFn 上传无进度，显示加载态；错误展示原因） */}
 			{uploads.length > 0 && (
 				<div className="shrink-0 space-y-1 border-t border-border p-2">
 					{uploads.map((u) => (
 						<div key={u.filename} className="flex items-center gap-2 text-xs">
+							<RiLoader4Line className="size-3.5 animate-spin text-muted-foreground" />
 							<span className="w-40 truncate text-foreground">
 								{u.filename}
 							</span>
 							{u.error ? (
 								<span className="text-danger">{u.error}</span>
 							) : (
-								<>
-									<Progress value={u.progress} className="h-1.5 flex-1" />
-									<span className="text-muted-foreground tabular-nums">
-										{u.progress}%
-									</span>
-								</>
+								<span className="text-muted-foreground">上传中…</span>
 							)}
 						</div>
 					))}
@@ -402,13 +398,17 @@ function iconFor(item: FileInfo): React.ReactNode {
 	return <RiFileLine className="size-4 text-muted-foreground" />;
 }
 
-/** 触发浏览器下载远程文件（Server Route 直通） */
+/** 触发浏览器下载远程文件（sftpDownloadSFn 流式，客户端组装 Blob 后保存） */
 async function downloadFile(sessionId: string, path: string, filename: string) {
-	const res = await apiFetch(
-		`/api/sftp/download?sessionId=${encodeURIComponent(sessionId)}&path=${encodeURIComponent(path)}`,
-	);
-	if (!res.ok) throw new Error(`下载失败: ${res.status}`);
-	const blob = await res.blob();
+	const stream = await sftpDownloadSFn({ data: { sessionId, path } });
+	const chunks: Uint8Array[] = [];
+	const reader = stream.getReader();
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		if (value) chunks.push(value);
+	}
+	const blob = new Blob(chunks as unknown as BlobPart[]);
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement("a");
 	a.href = url;
@@ -417,7 +417,7 @@ async function downloadFile(sessionId: string, path: string, filename: string) {
 	URL.revokeObjectURL(url);
 }
 
-/** 批量上传文件：逐个走 /api/sftp/upload 流式写入，XHR 提供进度 */
+/** 批量上传文件：逐个走 sftpUploadSFn（FormData multipart；SFn 无上传进度，队列显示加载态） */
 async function uploadFiles(
 	sessionId: string,
 	dirPath: string,
@@ -426,45 +426,23 @@ async function uploadFiles(
 	refresh: () => void,
 ) {
 	for (const file of files) {
-		const xhr = new XMLHttpRequest();
-		xhr.open(
-			"POST",
-			`/api/sftp/upload?sessionId=${encodeURIComponent(sessionId)}&dirPath=${encodeURIComponent(dirPath)}&filename=${encodeURIComponent(file.name)}`,
-		);
-		// 全局鉴权（D19）：XHR 同样携带 token
-		for (const [k, v] of Object.entries(authHeaders())) {
-			xhr.setRequestHeader(k, v);
-		}
-		xhr.upload.onprogress = (e) => {
-			if (e.lengthComputable) {
-				const progress = Math.round((e.loaded / e.total) * 100);
-				setUploads((prev) =>
-					prev.map((u) => (u.filename === file.name ? { ...u, progress } : u)),
-				);
-			}
-		};
-		xhr.onload = () => {
-			if (xhr.status === 200) {
-				setUploads((prev) => prev.filter((u) => u.filename !== file.name));
-				refresh();
-			} else {
-				setUploads((prev) =>
-					prev.map((u) =>
-						u.filename === file.name
-							? { ...u, error: `上传失败 (${xhr.status})` }
-							: u,
-					),
-				);
-			}
-		};
-		xhr.onerror = () => {
+		const fd = new FormData();
+		fd.append("sessionId", sessionId);
+		fd.append("dirPath", dirPath);
+		fd.append("file", file);
+		setUploads((prev) => [...prev, { filename: file.name }]);
+		try {
+			await sftpUploadSFn({ data: fd });
+			setUploads((prev) => prev.filter((u) => u.filename !== file.name));
+			refresh();
+		} catch (err) {
 			setUploads((prev) =>
 				prev.map((u) =>
-					u.filename === file.name ? { ...u, error: "网络错误" } : u,
+					u.filename === file.name
+						? { ...u, error: `上传失败: ${(err as Error).message}` }
+						: u,
 				),
 			);
-		};
-		setUploads((prev) => [...prev, { filename: file.name, progress: 0 }]);
-		xhr.send(file);
+		}
 	}
 }

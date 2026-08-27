@@ -24,7 +24,6 @@ import {
 } from "#/components/shared/CommandCard";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
-import { cn } from "#/lib/utils";
 import {
 	approvalSFn,
 	listPendingApprovalsSFn,
@@ -32,6 +31,7 @@ import {
 import { aiChatSFn } from "#/services/ai/chat/chat.functions";
 import type { AiStreamChunk } from "#/services/ai/chat/chat.schemas";
 import { useUiStore } from "#/stores/ui";
+import { cn } from "#/utils";
 import { AuditHistoryPanel } from "./AuditHistoryPanel";
 
 interface AiPanelProps {

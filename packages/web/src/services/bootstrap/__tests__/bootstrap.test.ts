@@ -13,7 +13,7 @@ const { runMigrationsMock, runSeedMock } = vi.hoisted(() => ({
 
 vi.mock("#/db/migrate", () => ({ runMigrations: runMigrationsMock }));
 vi.mock("#/db/seed", () => ({ runSeed: runSeedMock }));
-vi.mock("#/lib/logger", () => ({
+vi.mock("#/lib/logger/logger.server", () => ({
 	logger: { info: vi.fn(), error: vi.fn() },
 }));
 

@@ -5,7 +5,7 @@
 
 import { db } from "#/db";
 import { log } from "#/db/schema";
-import { logger } from "#/lib/logger";
+import { logger } from "#/lib/logger/logger.server";
 
 export type LogAction =
 	| "executed"

@@ -6,7 +6,7 @@
  * 纯服务端模块，由 aiChatSFn 动态 import，避免进入 client bundle。
  */
 
-import { logger } from "#/lib/logger";
+import { logger } from "#/lib/logger/logger.server";
 import {
 	ApprovalRequiredError,
 	PolicyError,

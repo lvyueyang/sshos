@@ -1,6 +1,6 @@
 /** 终端交互日志服务：校验会话归属后记录用户手动输入。 */
 
-import { batchWriter } from "#/lib/batch-writer";
+import { batchWriter } from "#/lib/batch-writer/batch-writer.server";
 import { sshManager } from "#/services/ssh/connection/ssh.server";
 
 /** 记录终端交互命令（terminal_command 类；会话不存在时丢弃，防伪造 sessionId 污染审计） */

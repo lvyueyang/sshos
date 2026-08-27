@@ -10,7 +10,7 @@ import {
 	RiFolderOpenLine,
 } from "@remixicon/react";
 import { useEffect } from "react";
-import { cn } from "#/lib/utils";
+import { cn } from "#/utils";
 
 /** 右键菜单作用对象 */
 export interface MenuItem {

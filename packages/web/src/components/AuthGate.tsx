@@ -6,7 +6,7 @@
  */
 
 import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { getAuthToken } from "#/lib/auth-client";
+import { getAuthToken } from "#/lib/auth-client/auth-client";
 import { authStatusSFn } from "#/services/auth/auth.functions";
 import { ThemeProvider } from "#/theme/theme-provider";
 import { LoginForm } from "./LoginForm";

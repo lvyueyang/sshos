@@ -5,7 +5,7 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
-import { registerPublicSfn } from "#/lib/public-sfns";
+import { registerPublicSfn } from "#/lib/public-sfns/public-sfns";
 import { authStatusSchema, passwordSchema } from "./auth.schemas";
 import { getAuthStatus, loginServer, setupServer } from "./auth.server";
 

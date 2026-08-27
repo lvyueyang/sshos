@@ -8,8 +8,8 @@ import { getAppViews } from "#/app-framework/app-views";
 import { listStatusbarApps, listWindowApps } from "#/app-framework/registry";
 import { AppIcon } from "#/components/shared/AppIcon";
 import { StatusDot } from "#/components/shared/StatusDot";
-import { cn } from "#/lib/utils";
 import { type TabState, useDesktopStore } from "#/stores/windows";
+import { cn } from "#/utils";
 
 export function Taskbar({ tab }: { tab: TabState }) {
 	const windows = useDesktopStore(

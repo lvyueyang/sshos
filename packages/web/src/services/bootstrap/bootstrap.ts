@@ -6,7 +6,7 @@
 
 import { runMigrations } from "#/db/migrate";
 import { runSeed } from "#/db/seed";
-import { logger } from "#/lib/logger";
+import { logger } from "#/lib/logger/logger.server";
 import { setBootstrapReady, setBootstrapRunning } from "./status";
 
 let started = false;

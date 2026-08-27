@@ -5,7 +5,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { batchWriter } from "#/lib/batch-writer";
+import { batchWriter } from "#/lib/batch-writer/batch-writer.server";
 import { testConnection } from "#/services/ssh/connection/ssh.server";
 import {
 	connectionInputSchema,

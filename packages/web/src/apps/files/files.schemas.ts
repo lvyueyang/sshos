@@ -34,3 +34,9 @@ export const sftpRenameSchema = z.object({
 	oldPath: z.string().min(1),
 	newPath: z.string().min(1),
 });
+
+/** 流式下载远程文件（SFn 返回 ReadableStream<Uint8Array>，客户端组装 Blob） */
+export const sftpDownloadSchema = z.object({
+	sessionId: z.string().min(1),
+	path: z.string().min(1),
+});

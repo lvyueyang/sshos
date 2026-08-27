@@ -11,9 +11,9 @@ import {
 	readServerConfig,
 	SERVER_DEFAULTS,
 	writeServerConfig,
-} from "../config";
-import { signJwt, TOKEN_TTL_SEC, verifyJwt } from "../jwt";
-import { hashPassword, verifyPassword } from "../password";
+} from "../core/config";
+import { signJwt, TOKEN_TTL_SEC, verifyJwt } from "../core/jwt";
+import { hashPassword, verifyPassword } from "../core/password";
 
 const dataDir = mkdtempSync(join(tmpdir(), "sshos-auth-"));
 process.env.SSHOS_DATA_DIR = dataDir;

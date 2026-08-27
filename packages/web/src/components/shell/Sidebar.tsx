@@ -48,7 +48,6 @@ import {
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { useConnect } from "#/hooks/use-connect";
-import { cn } from "#/lib/utils";
 import {
 	createGroupSFn,
 	deleteGroupSFn,
@@ -61,6 +60,7 @@ import {
 import { useSettingsUiStore } from "#/stores/settings-ui";
 import { type ConnectionPrefill, useUiStore } from "#/stores/ui";
 import { useDesktopStore } from "#/stores/windows";
+import { cn } from "#/utils";
 import { ConnectionDrawer } from "../ConnectionDrawer";
 
 const DEFAULT_GROUP_ID = "group:default";

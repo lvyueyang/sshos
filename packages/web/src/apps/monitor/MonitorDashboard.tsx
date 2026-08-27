@@ -11,7 +11,7 @@ import { useMemo } from "react";
 import { Card, CardContent } from "#/components/ui/card";
 import { Progress } from "#/components/ui/progress";
 import { useMetricsStream } from "#/hooks/use-metrics-stream";
-import { formatBytes, formatRate, usagePct } from "#/lib/format";
+import { formatBytes, formatRate, usagePct } from "#/lib/format/format";
 import { useThemeStore } from "#/stores/theme";
 
 interface MonitorDashboardProps {

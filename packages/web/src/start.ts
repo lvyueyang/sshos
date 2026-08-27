@@ -7,7 +7,7 @@
  */
 
 import { createStart } from "@tanstack/react-start";
-import { getAuthToken } from "#/lib/auth-client";
+import { getAuthToken } from "#/lib/auth-client/auth-client";
 import { authMiddleware } from "#/middleware/auth";
 import { sfErrorLogger } from "#/middleware/sf-error-logger";
 

@@ -4,7 +4,7 @@
  * 页面 / 静态资源放行。
  */
 
-import { isPublicSfn } from "#/lib/public-sfns";
+import { isPublicSfn } from "#/lib/public-sfns/public-sfns";
 
 /** 需要鉴权：SFn 除公开注册外一律校验；/api/* 除 health 外校验；页面与静态资源放行 */
 export function isProtected(

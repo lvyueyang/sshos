@@ -8,7 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ModelRuntime, SettingsManager } from "@earendil-works/pi-coding-agent";
-import { getDataDir } from "#/lib/paths";
+import { getDataDir } from "#/lib/paths/paths.server";
 import {
 	deleteSetting,
 	getSetting,

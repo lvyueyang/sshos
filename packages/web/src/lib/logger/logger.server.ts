@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { Writable } from "node:stream";
 import pino from "pino";
 import pinoPretty from "pino-pretty";
-import { getDataDir } from "#/lib/paths";
+import { getDataDir } from "#/lib/paths/paths.server";
 
 export interface LoggerOptions {
 	level: string;

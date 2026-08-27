@@ -6,7 +6,7 @@
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { drizzle } from "drizzle-orm/node-sqlite";
-import { getDataDir } from "#/lib/paths";
+import { getDataDir } from "#/lib/paths/paths.server";
 
 /** 数据库文件路径：数据目录约定见 getDataDir（开发 ~/.ssh-os-dev / 生产 ~/.ssh-os） */
 export function getDbPath(): string {

@@ -8,8 +8,8 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
+import { batchWriter } from "#/lib/batch-writer/batch-writer.server";
 import { runMigrations } from "../../../../db/migrate";
-import { batchWriter } from "../../../../lib/batch-writer";
 import { createConnection } from "../../../settings/connections/settings.server";
 import {
 	connectSession,

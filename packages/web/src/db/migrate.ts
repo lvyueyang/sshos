@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { drizzle } from "drizzle-orm/node-sqlite";
 import { migrate } from "drizzle-orm/node-sqlite/migrator";
-import { logger } from "#/lib/logger";
+import { logger } from "#/lib/logger/logger.server";
 import { getDbPath } from "./index";
 
 export { getDbPath } from "./index";

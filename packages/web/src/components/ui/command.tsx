@@ -8,7 +8,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "#/components/ui/dialog.tsx";
-import { cn } from "#/lib/utils";
+import { cn } from "#/utils";
 
 function Command({
 	className,

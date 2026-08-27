@@ -10,8 +10,8 @@ import { disposeAppManager } from "#/app-framework/app-instances";
 import { disconnectSFn } from "#/apps/terminal/terminal.functions";
 import { StatusDot } from "#/components/shared/StatusDot";
 import { Button } from "#/components/ui/button";
-import { cn } from "#/lib/utils";
 import { useDesktopStore } from "#/stores/windows";
+import { cn } from "#/utils";
 
 export function TabBar() {
 	const { t } = useTranslation();

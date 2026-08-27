@@ -6,8 +6,8 @@
 
 import { Progress } from "#/components/ui/progress";
 import { useMetricsStream } from "#/hooks/use-metrics-stream";
-import { formatBytes, usagePct } from "#/lib/format";
-import { cn } from "#/lib/utils";
+import { formatBytes, usagePct } from "#/lib/format/format";
+import { cn } from "#/utils";
 
 interface MonitorPanelProps {
 	sessionId: string;

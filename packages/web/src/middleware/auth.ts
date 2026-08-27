@@ -7,11 +7,11 @@
  */
 
 import { createMiddleware } from "@tanstack/react-start";
-import { isProtected } from "#/lib/http-guard";
+import { isProtected } from "#/lib/http-guard/http-guard";
 import { isConfigured, readServerConfig, verifyJwt } from "#/services/auth";
 import { getBootstrapStatus } from "#/services/bootstrap/status";
 
-export { isProtected } from "#/lib/http-guard";
+export { isProtected } from "#/lib/http-guard/http-guard";
 
 export const authMiddleware = createMiddleware({ type: "request" }).server(
 	async ({ request, next, handlerType }) => {

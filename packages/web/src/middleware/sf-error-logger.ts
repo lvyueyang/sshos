@@ -4,7 +4,7 @@
  */
 
 import { createMiddleware } from "@tanstack/react-start";
-import { logger } from "#/lib/logger";
+import { logger } from "#/lib/logger/logger.server";
 
 export const sfErrorLogger = createMiddleware({ type: "function" }).server(
 	async ({ next }) => {

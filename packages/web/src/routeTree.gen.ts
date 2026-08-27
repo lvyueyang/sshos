@@ -11,8 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as ApiSftpDownloadRouteImport } from './routes/api/sftp/download'
-import { Route as ApiSftpUploadRouteImport } from './routes/api/sftp/upload'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,50 +22,31 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSftpDownloadRoute = ApiSftpDownloadRouteImport.update({
-  id: '/api/sftp/download',
-  path: '/api/sftp/download',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSftpUploadRoute = ApiSftpUploadRouteImport.update({
-  id: '/api/sftp/upload',
-  path: '/api/sftp/upload',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/sftp/download': typeof ApiSftpDownloadRoute
-  '/api/sftp/upload': typeof ApiSftpUploadRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/sftp/download': typeof ApiSftpDownloadRoute
-  '/api/sftp/upload': typeof ApiSftpUploadRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/health': typeof ApiHealthRoute
-  '/api/sftp/download': typeof ApiSftpDownloadRoute
-  '/api/sftp/upload': typeof ApiSftpUploadRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/health' | '/api/sftp/download' | '/api/sftp/upload'
+  fullPaths: '/' | '/api/health'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/health' | '/api/sftp/download' | '/api/sftp/upload'
-  id:
-    '__root__' | '/' | '/api/health' | '/api/sftp/download' | '/api/sftp/upload'
+  to: '/' | '/api/health'
+  id: '__root__' | '/' | '/api/health'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiHealthRoute: typeof ApiHealthRoute
-  ApiSftpDownloadRoute: typeof ApiSftpDownloadRoute
-  ApiSftpUploadRoute: typeof ApiSftpUploadRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -86,28 +65,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/sftp/download': {
-      id: '/api/sftp/download'
-      path: '/api/sftp/download'
-      fullPath: '/api/sftp/download'
-      preLoaderRoute: typeof ApiSftpDownloadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/sftp/upload': {
-      id: '/api/sftp/upload'
-      path: '/api/sftp/upload'
-      fullPath: '/api/sftp/upload'
-      preLoaderRoute: typeof ApiSftpUploadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiHealthRoute: ApiHealthRoute,
-  ApiSftpDownloadRoute: ApiSftpDownloadRoute,
-  ApiSftpUploadRoute: ApiSftpUploadRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

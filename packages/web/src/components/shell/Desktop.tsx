@@ -17,13 +17,13 @@ import {
 import type { AppContext, AppDefinition } from "#/app-framework/types";
 import { registerBuiltinApps } from "#/apps";
 import { AppIcon } from "#/components/shared/AppIcon";
-import { cn } from "#/lib/utils";
 import {
 	getConnectionSettingSFn,
 	recordAuditSFn,
 	setConnectionSettingSFn,
 } from "#/services/settings/connections/settings.functions";
 import { type TabState, useDesktopStore } from "#/stores/windows";
+import { cn } from "#/utils";
 import { Taskbar } from "./Taskbar";
 import { Window } from "./Window";
 

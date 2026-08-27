@@ -6,7 +6,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { getDataDir } from "#/lib/paths";
+import { getDataDir } from "#/lib/paths/paths.server";
 
 /** server.json 配置项 */
 export interface ServerConfig {

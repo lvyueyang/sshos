@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { getAuthStatus, loginServer, setupServer } from "../auth.server";
-import { getServerConfigPath, isConfigured } from "../config";
+import { getServerConfigPath, isConfigured } from "../core/config";
 
 const dataDir = mkdtempSync(join(tmpdir(), "sshos-auth-server-"));
 process.env.SSHOS_DATA_DIR = dataDir;

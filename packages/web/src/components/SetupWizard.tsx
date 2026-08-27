@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
-import { setAuthToken } from "#/lib/auth-client";
+import { setAuthToken } from "#/lib/auth-client/auth-client";
 import { setupSFn } from "#/services/auth/auth.functions";
 
 export function SetupWizard({ onDone }: { onDone: () => void }) {

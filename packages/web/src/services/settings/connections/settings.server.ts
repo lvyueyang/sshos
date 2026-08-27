@@ -12,7 +12,7 @@ import {
 	connectionSetting,
 	setting,
 } from "#/db/schema";
-import { getDataDir } from "#/lib/paths";
+import { getDataDir } from "#/lib/paths/paths.server";
 import type { AuthType } from "#/services/ssh/connection/ssh-manager";
 
 /** 连接写操作入参（敏感字段为明文，直接入库） */

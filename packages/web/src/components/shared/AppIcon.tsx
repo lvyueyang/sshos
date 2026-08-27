@@ -12,7 +12,7 @@ import {
 	RiTerminalLine,
 	RiTimeLine,
 } from "@remixicon/react";
-import { cn } from "#/lib/utils";
+import { cn } from "#/utils";
 
 /** manifest.icon → Remix 图标映射（见各 apps/<app>/app.ts 的 icon 声明） */
 const APP_ICONS: Record<string, typeof RiTerminalLine> = {

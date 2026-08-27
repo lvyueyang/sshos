@@ -4,7 +4,7 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
-import { registerPublicSfn } from "#/lib/public-sfns";
+import { registerPublicSfn } from "#/lib/public-sfns/public-sfns";
 import { getBootstrapStatus } from "./status";
 
 export const bootstrapStatusSFn = createServerFn({ method: "GET" }).handler(
