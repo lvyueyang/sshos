@@ -1,7 +1,8 @@
 /**
- * 日志领域服务（docs 技术架构 §4.3 / §7.8）：结构化日志查询与记录。
+ * 日志领域服务（docs 技术架构 §4.3 / §7.8）：结构化日志查询。
  * 查询支持 sessionId / connectionId / type / classification 过滤 + 倒序分页；
  * 终端命令记录由客户端命令追踪器经 SFn 落库（terminal_command 类，action=user_input）。
+ * 写入走 audit 子域（audit-writer.server.ts 的 auditLogWriter）。
  */
 
 import { and, desc, eq, inArray, type SQL } from "drizzle-orm";

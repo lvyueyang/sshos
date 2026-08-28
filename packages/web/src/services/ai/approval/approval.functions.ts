@@ -5,8 +5,8 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { batchWriter } from "#/lib/batch-writer/batch-writer.server";
 import { authMiddleware } from "#/middleware/auth-guard";
+import { auditLogWriter } from "#/services/logs/audit/audit-writer.server";
 import { approvalRegistry } from "./registry";
 
 const approvalSchema = z.object({
@@ -29,7 +29,7 @@ export const approvalSFn = createServerFn({ method: "POST" })
 		}
 
 		if (data.decision === "rejected") {
-			batchWriter.enqueue({
+			auditLogWriter.enqueue({
 				type: "policy_decision",
 				sessionId: entry.sessionId,
 				connectionId: entry.connectionId,
@@ -44,7 +44,7 @@ export const approvalSFn = createServerFn({ method: "POST" })
 
 		// approved：重放执行原 handler（不再过策略——已人工确认），结果写审计
 		const result = await entry.replay();
-		batchWriter.enqueue({
+		auditLogWriter.enqueue({
 			type: "policy_decision",
 			sessionId: entry.sessionId,
 			connectionId: entry.connectionId,

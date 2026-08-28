@@ -8,7 +8,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { batchWriter } from "#/lib/batch-writer/batch-writer.server";
+import { auditLogWriter } from "#/services/logs/audit/audit-writer.server";
 import { runMigrations } from "../../../../db/migrate";
 import { recordTerminalCommand } from "../../terminal/terminal.server";
 import { listLogs } from "../logs.server";
@@ -26,7 +26,7 @@ function enqueuePolicyDecision(
 	command: string,
 	classification: "safe" | "review" | "block",
 ): void {
-	batchWriter.enqueue({
+	auditLogWriter.enqueue({
 		type: "policy_decision",
 		sessionId,
 		command,
@@ -44,7 +44,7 @@ describe("logs 领域服务", () => {
 
 	it("会话不存在时 recordTerminalCommand 丢弃（防伪造 sessionId 污染）", async () => {
 		recordTerminalCommand("ghost-session", "fake command");
-		await batchWriter.flush();
+		await auditLogWriter.flush();
 
 		const rows = await listLogs({
 			sessionId: "ghost-session",
@@ -56,7 +56,7 @@ describe("logs 领域服务", () => {
 
 	it("type 过滤排除不匹配类型（policy_decision 不被 terminal_command 查询返回）", async () => {
 		enqueuePolicyDecision("sess-p", "rm -rf /", "block");
-		await batchWriter.flush();
+		await auditLogWriter.flush();
 
 		// 确认 policy_decision 确实落库
 		const all = await listLogs({ sessionId: "sess-p", limit: 50, offset: 0 });
@@ -76,7 +76,7 @@ describe("logs 领域服务", () => {
 	it("分页 limit 生效", async () => {
 		enqueuePolicyDecision("page-a", "a", "safe");
 		enqueuePolicyDecision("page-b", "b", "safe");
-		await batchWriter.flush();
+		await auditLogWriter.flush();
 
 		const rows = await listLogs({ limit: 1, offset: 0 });
 		expect(rows).toHaveLength(1);

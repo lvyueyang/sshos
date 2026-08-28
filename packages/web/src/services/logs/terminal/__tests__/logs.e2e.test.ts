@@ -8,7 +8,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { batchWriter } from "#/lib/batch-writer/batch-writer.server";
+import { auditLogWriter } from "#/services/logs/audit/audit-writer.server";
 import { runMigrations } from "../../../../db/migrate";
 import { createConnection } from "../../../settings/connections/settings.server";
 import {
@@ -46,7 +46,7 @@ describeE2E("logs 终端命令追踪 E2E", () => {
 		const session = await connectSession(connId);
 		try {
 			recordTerminalCommand(session.sessionId, "echo ssh-os-e2e");
-			await batchWriter.flush();
+			await auditLogWriter.flush();
 
 			const rows = await listLogs({
 				sessionId: session.sessionId,

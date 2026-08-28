@@ -106,7 +106,7 @@ ssh-os/
 
 ### 审计日志
 
-- AI / 自动操作的命令路径在 `exec.service.ts` 内联落审计（`execWithPolicy` 内 `writeAudit`：block/review/safe 全记录），写 SQLite `log` 表（`type` = `policy_decision`，含 `classification` / `action` / `result`），通过 BatchWriter 批量写入；用户手动操作不落策略审计
+- AI / 自动操作的命令路径在 `exec.service.ts` 内联落审计（`execWithPolicy` 内 `writeAudit`：block/review/safe 全记录），写 SQLite `log` 表（`type` = `policy_decision`，含 `classification` / `action` / `result`），经审计日志专属实例 `auditLogWriter`（`services/logs/audit/audit-writer.server.ts`）批量写入（底层为 `lib/batch-writer` 通用 `BatchWriter<T>`）；用户手动操作不落策略审计
 - 终端交互命令走 `recordTerminalCommandSFn`（`services/logs`）：客户端命令追踪器累积 onData 输入行，回车落 `terminal_command`（action=`user_input`）；PTY 输出检测到密码提示时抑制密码行落库；命令字段与分类器一致：优先提取 `data.command`，避免整包序列化
 - 日志查询统一走 `listLogsSFn`（`services/logs`，按 sessionId/connectionId/type/classification 过滤 + 分页）；**独立日志应用**（`apps/logs`，桌面图标 + 窗口）统一查看三类日志，AI 面板「历史」按钮为快捷入口
 - BatchWriter 写入失败时条目放回头部按指数退避重试（上限 60s），不丢审计
@@ -181,7 +181,7 @@ ssh-os/
 | 结构化日志 | SQLite `log` 表 | AI 审计、终端命令、AI/自动操作策略决策（可查询） |
 | 运行时日志 | Pino 文件（`{dataDir}/logs/`，开发 `~/.ssh-os-dev` / 生产 `~/.ssh-os`） | SSH 握手、SFTP 传输、异常堆栈、SFn 调用链 |
 
-高频审计写入用 BatchWriter 缓冲（定时/定量批量 INSERT + 容量上限 + 进程退出时强制刷新），避免拖慢 PTY 吞吐。
+高频审计写入用 `auditLogWriter`（`lib/batch-writer` 通用 `BatchWriter<T>` 实例）缓冲（定时/定量批量 INSERT + 容量上限 + 进程退出时强制刷新），避免拖慢 PTY 吞吐。
 
 ## 命令
 

@@ -9,7 +9,7 @@
 
 import { readServerConfig } from "#/services/auth/core/config";
 import { runBootstrap } from "#/services/bootstrap/bootstrap";
-import { batchWriter } from "./src/lib/batch-writer/batch-writer.server";
+import { auditLogWriter } from "#/services/logs/audit/audit-writer.server";
 
 // 监听地址必须显式设置：Nitro preset 未设 NITRO_HOST 时默认绑定所有接口（0.0.0.0）。
 // server.json 的 port/bind 优先（手工编辑后重启生效）；未配置或未指定时收紧到仅本机。
@@ -27,7 +27,7 @@ runBootstrap();
 // 优雅关闭：进程退出信号到达时先刷空审计缓冲再退出（docs 技术架构 §7.8）
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
 	process.on(signal, () => {
-		void batchWriter.flushOnExit().finally(() => process.exit(0));
+		void auditLogWriter.flushOnExit().finally(() => process.exit(0));
 	});
 }
 

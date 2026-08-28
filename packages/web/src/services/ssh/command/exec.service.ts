@@ -6,15 +6,15 @@
  */
 
 import {
-	batchWriter,
-	type LogAction,
-	type LogResult,
-} from "#/lib/batch-writer/batch-writer.server";
-import {
 	ApprovalRequiredError,
 	approvalRegistry,
 	PolicyError,
 } from "#/services/ai/approval/registry";
+import {
+	auditLogWriter,
+	type LogAction,
+	type LogResult,
+} from "#/services/logs/audit/audit-writer.server";
 import { classifyCommand } from "#/services/policy/classifier";
 import {
 	execCommand,
@@ -38,7 +38,7 @@ function writeAudit(
 	result: LogResult,
 	detail?: string,
 ): void {
-	batchWriter.enqueue({
+	auditLogWriter.enqueue({
 		type: "policy_decision",
 		sessionId,
 		command,

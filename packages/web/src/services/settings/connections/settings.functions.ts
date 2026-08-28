@@ -5,8 +5,8 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { batchWriter } from "#/lib/batch-writer/batch-writer.server";
 import { authMiddleware } from "#/middleware/auth-guard";
+import { auditLogWriter } from "#/services/logs/audit/audit-writer.server";
 import { testConnection } from "#/services/ssh/connection/ssh.server";
 import {
 	connectionInputSchema,
@@ -222,7 +222,7 @@ export const recordAuditSFn = createServerFn({ method: "POST" })
 	.validator(recordAuditSchema)
 	.middleware([authMiddleware])
 	.handler(async ({ data }) => {
-		batchWriter.enqueue({
+		auditLogWriter.enqueue({
 			type: "ai_audit",
 			sessionId: data.sessionId,
 			command: data.command,
