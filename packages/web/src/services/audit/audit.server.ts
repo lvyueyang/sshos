@@ -1,14 +1,14 @@
 /**
- * 日志领域服务（docs 技术架构 §4.3 / §7.8）：结构化日志查询。
+ * 审计日志查询服务（docs 技术架构 §4.3 / §7.8）：结构化日志查询。
  * 查询支持 sessionId / connectionId / type / classification 过滤 + 倒序分页；
  * 终端命令记录由客户端命令追踪器经 SFn 落库（terminal_command 类，action=user_input）。
- * 写入走 audit 子域（audit-writer.server.ts 的 auditLogWriter）。
+ * 写入走 audit-writer.server.ts（auditLogWriter 批量落库）。
  */
 
 import { and, desc, eq, inArray, type SQL } from "drizzle-orm";
 import { db } from "#/db";
 import { log as logTable } from "#/db/schema";
-import type { ListLogsInput } from "./logs.schemas";
+import type { ListLogsInput } from "./audit.schemas";
 
 /** 日志查询条件（可选过滤字段 + 分页） */
 export type LogQuery = ListLogsInput;

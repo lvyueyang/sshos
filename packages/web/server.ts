@@ -7,9 +7,9 @@
  * SSR 由 tanstackStart 的 Nitro 集成（ssr service）自动处理。
  */
 
+import { auditLogWriter } from "#/services/audit/audit-writer.server";
 import { readServerConfig } from "#/services/auth/core/config";
 import { runBootstrap } from "#/services/bootstrap/bootstrap";
-import { auditLogWriter } from "#/services/logs/audit/audit-writer.server";
 
 // 监听地址必须显式设置：Nitro preset 未设 NITRO_HOST 时默认绑定所有接口（0.0.0.0）。
 // server.json 的 port/bind 优先（手工编辑后重启生效）；未配置或未指定时收紧到仅本机。

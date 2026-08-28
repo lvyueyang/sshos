@@ -2,8 +2,8 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "#/middleware/auth-guard";
-import { listLogsSchema } from "../storage/logs.schemas";
-import { listLogs } from "../storage/logs.server";
+import { listLogsSchema } from "./audit.schemas";
+import { listLogs } from "./audit.server";
 
 /** 查询结构化日志（时间倒序 + 分页；timestamp 序列化为 ISO 字符串） */
 export const listLogsSFn = createServerFn({ method: "GET" })

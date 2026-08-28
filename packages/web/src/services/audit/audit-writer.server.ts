@@ -1,7 +1,7 @@
 /**
  * 审计日志批量写入器（auditLogWriter）：结构化日志（log 表）的写入通道。
  * 底层为 lib/batch-writer 通用 BatchWriter<T>，此处绑定 log 表枚举与 INSERT。
- * 供 AI 审计 / 策略决策 / 终端命令记录共用；查询走 services/logs/storage。
+ * 供 AI 审计 / 策略决策 / 终端命令记录共用；查询走 services/audit/audit.server.ts。
  */
 
 import { db } from "#/db";

@@ -12,7 +12,7 @@ import {
 	LEVEL_COLOR,
 	truncateCommand,
 } from "#/lib/logger/logs-format";
-import { listLogsSFn } from "#/services/logs/audit/audit.functions";
+import { listLogsSFn } from "#/services/audit/audit.functions";
 
 interface AuditHistoryPanelProps {
 	sessionId: string;

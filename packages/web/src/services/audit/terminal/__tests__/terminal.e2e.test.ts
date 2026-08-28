@@ -8,14 +8,14 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { auditLogWriter } from "#/services/logs/audit/audit-writer.server";
+import { auditLogWriter } from "#/services/audit/audit-writer.server";
 import { runMigrations } from "../../../../db/migrate";
 import { createConnection } from "../../../settings/connections/settings.server";
 import {
 	connectSession,
 	disconnectSession,
 } from "../../../ssh/connection/ssh.server";
-import { listLogs } from "../../storage/logs.server";
+import { listLogs } from "../../audit.server";
 import { recordTerminalCommand } from "../terminal.server";
 
 const HOST = process.env.SSH_TEST_HOST ?? "localhost:2222";
@@ -27,7 +27,7 @@ const describeE2E = process.env.SSH_TEST_HOST ? describe : describe.skip;
 const dataDir = mkdtempSync(join(tmpdir(), "sshos-logs-e2e-"));
 process.env.SSHOS_DATA_DIR = dataDir;
 
-describeE2E("logs 终端命令追踪 E2E", () => {
+describeE2E("终端命令追踪 E2E（审计域）", () => {
 	beforeAll(async () => {
 		await runMigrations();
 	});

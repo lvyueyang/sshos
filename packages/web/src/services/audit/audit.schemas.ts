@@ -1,5 +1,5 @@
 /**
- * 日志查询 / 记录 SFn 入参 Zod schema（单一来源）。
+ * 审计日志查询 / 记录 SFn 入参 Zod schema（单一来源）。
  * type / classification 枚举与 db/schema.ts 的 log 表保持一致。
  */
 

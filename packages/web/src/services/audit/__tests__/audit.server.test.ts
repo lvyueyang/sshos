@@ -1,17 +1,17 @@
 /**
- * 日志领域服务集成测试：
+ * 审计领域服务集成测试：
  * 临时数据目录 + 程序化迁移，验证 listLogs 过滤分页与 recordTerminalCommand 的会话校验
- * （真实会话落库路径由 logs.e2e.test.ts 门控覆盖，此处验证防伪造丢弃与查询语义）。
+ * （真实会话落库路径由 terminal.e2e.test.ts 门控覆盖，此处验证防伪造丢弃与查询语义）。
  */
 
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { auditLogWriter } from "#/services/logs/audit/audit-writer.server";
-import { runMigrations } from "../../../../db/migrate";
-import { recordTerminalCommand } from "../../terminal/terminal.server";
-import { listLogs } from "../logs.server";
+import { auditLogWriter } from "#/services/audit/audit-writer.server";
+import { runMigrations } from "../../../db/migrate";
+import { listLogs } from "../audit.server";
+import { recordTerminalCommand } from "../terminal/terminal.server";
 
 const dataDir = mkdtempSync(join(tmpdir(), "sshos-logs-"));
 process.env.SSHOS_DATA_DIR = dataDir;
@@ -36,7 +36,7 @@ function enqueuePolicyDecision(
 	});
 }
 
-describe("logs 领域服务", () => {
+describe("审计领域服务", () => {
 	it("空库查询返回空数组", async () => {
 		const rows = await listLogs({ limit: 50, offset: 0 });
 		expect(rows).toEqual([]);

@@ -14,7 +14,7 @@ import {
 	auditLogWriter,
 	type LogAction,
 	type LogResult,
-} from "#/services/logs/audit/audit-writer.server";
+} from "#/services/audit/audit-writer.server";
 import { classifyCommand } from "#/services/policy/classifier";
 import {
 	execCommand,

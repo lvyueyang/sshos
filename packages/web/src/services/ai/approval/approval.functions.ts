@@ -6,7 +6,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "#/middleware/auth-guard";
-import { auditLogWriter } from "#/services/logs/audit/audit-writer.server";
+import { auditLogWriter } from "#/services/audit/audit-writer.server";
 import { approvalRegistry } from "./registry";
 
 const approvalSchema = z.object({

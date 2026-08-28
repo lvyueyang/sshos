@@ -45,7 +45,7 @@ ssh-os/
 │   │       ├── services/         # 领域服务层（内部按功能子域分层）：ssh（command/connection/pty/sftp）、
 │   │       │                     #   ai（approval/chat/config/security + pi-agent）、metrics（collection）、
 │   │       │                     #   capabilities（distro/remote/tools）、settings（connections/groups/preferences）、
-│   │       │                     #   logs（audit/storage/terminal）、auth（core + 三件套）、
+│   │       │                     #   audit（terminal + auditLogWriter / audit.* 直属域根）、auth（core + 三件套）、
 │   │       │                     #   policy（classifier/rules/types）、bootstrap、transfer
 │   │       └── db/               # node:sqlite + drizzle（index/schema/migrate）
 │   └── desktop/                  # Electron 壳（main/bootstrap/updater）
@@ -106,9 +106,9 @@ ssh-os/
 
 ### 审计日志
 
-- AI / 自动操作的命令路径在 `exec.service.ts` 内联落审计（`execWithPolicy` 内 `writeAudit`：block/review/safe 全记录），写 SQLite `log` 表（`type` = `policy_decision`，含 `classification` / `action` / `result`），经审计日志专属实例 `auditLogWriter`（`services/logs/audit/audit-writer.server.ts`）批量写入（底层为 `lib/batch-writer` 通用 `BatchWriter<T>`）；用户手动操作不落策略审计
-- 终端交互命令走 `recordTerminalCommandSFn`（`services/logs`）：客户端命令追踪器累积 onData 输入行，回车落 `terminal_command`（action=`user_input`）；PTY 输出检测到密码提示时抑制密码行落库；命令字段与分类器一致：优先提取 `data.command`，避免整包序列化
-- 日志查询统一走 `listLogsSFn`（`services/logs`，按 sessionId/connectionId/type/classification 过滤 + 分页）；**独立日志应用**（`apps/logs`，桌面图标 + 窗口）统一查看三类日志，AI 面板「历史」按钮为快捷入口
+- AI / 自动操作的命令路径在 `exec.service.ts` 内联落审计（`execWithPolicy` 内 `writeAudit`：block/review/safe 全记录），写 SQLite `log` 表（`type` = `policy_decision`，含 `classification` / `action` / `result`），经审计日志专属实例 `auditLogWriter`（`services/audit/audit-writer.server.ts`）批量写入（底层为 `lib/batch-writer` 通用 `BatchWriter<T>`）；用户手动操作不落策略审计
+- 终端交互命令走 `recordTerminalCommandSFn`（`services/audit`）：客户端命令追踪器累积 onData 输入行，回车落 `terminal_command`（action=`user_input`）；PTY 输出检测到密码提示时抑制密码行落库；命令字段与分类器一致：优先提取 `data.command`，避免整包序列化
+- 日志查询统一走 `listLogsSFn`（`services/audit`，按 sessionId/connectionId/type/classification 过滤 + 分页）；**独立日志应用**（`apps/logs`，桌面图标 + 窗口）统一查看三类日志，AI 面板「历史」按钮为快捷入口
 - BatchWriter 写入失败时条目放回头部按指数退避重试（上限 60s），不丢审计
 
 ### 错误处理
