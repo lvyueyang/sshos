@@ -2,7 +2,7 @@
 
 集中登记评审 / 讨论产生的待办事项，后续按优先级完善。
 条目状态：**待做**（已定方向未实施）/ **待 spike**（先验证可行性再定实现）。
-完成后移入 `docs/04-决策记录.md` 校准记录并删除本条。
+完成后移入 `docs/决策记录.md` 校准记录并删除本条。
 
 ## AI 对话
 
@@ -10,9 +10,9 @@
 | --- | --- | --- | --- |
 | 待做 | 对话历史持久化 | AiPanel 的 `messages` 仅为组件内 `useState`，关闭 AI 窗口 / 切换 Tab / 刷新后丢失，上下文随之断裂。把 `messages` 持久化到 `connection_setting`（key=`app.ai.state`，走现成 settings 网关），重开 AI 窗口恢复上次对话。不改引擎（每次仍新建 Pi session），恢复的是对话文本与上下文 | `apps/ai/AiPanel.tsx`、`services/settings/connections/settings.functions.ts` |
 | 待 spike | 服务端复用 Pi session | 当前 `chat.server.ts` 每次请求 `createPiAgent` 新建 session（请求级无状态，注释「Pi 会话为请求级，无跨请求记忆」），Pi 会话记忆（session 树延续 / 可分支 / 可导出）未启用。先验证 Pi 0.84.2 是否支持跨请求恢复 session，再定实现；需处理 session 生命周期 / 并发 / 清理 | `services/ai/chat/chat.server.ts`、`services/ai/pi-agent.ts` |
-| 待做 | 连接级模型覆盖 | D22 已落地全局默认模型 + 系统设置 UI；连接级模型覆盖（每连接在 `connection_setting` 指定 model）随「服务端复用 Pi session / 每连接 Pi Host」一并接入 | `services/ai`、决策记录 D22 |
-| 待做 | OAuth / 订阅登录 | pi 支持 ChatGPT/Claude 订阅、GitHub Copilot、OpenRouter OAuth 等订阅型登录；当前设置 UI 仅支持 API Key。订阅登录需浏览器授权流，列入后续 | `services/ai`、决策记录 D22 |
-| 待做 | 内置 provider 代理覆盖 | `models.json` 支持为内置 provider 覆盖 `baseUrl`（代理路由），设置 UI 的 Provider 抽屉当前仅自定义 provider 可配 baseUrl，内置仅密钥管理 | `services/ai`、决策记录 D22 |
+| 待做 | 连接级模型覆盖 | 全局默认模型 + 系统设置 UI 已落地（决策记录「AI 模型配置」）；连接级模型覆盖（每连接在 `connection_setting` 指定 model）随「服务端复用 Pi session / 每连接 Pi Host」一并接入 | `services/ai`、决策记录「AI 模型配置」 |
+| 待做 | OAuth / 订阅登录 | pi 支持 ChatGPT/Claude 订阅、GitHub Copilot、OpenRouter OAuth 等订阅型登录；当前设置 UI 仅支持 API Key。订阅登录需浏览器授权流，列入后续 | `services/ai`、决策记录「AI 模型配置」 |
+| 待做 | 内置 provider 代理覆盖 | `models.json` 支持为内置 provider 覆盖 `baseUrl`（代理路由），设置 UI 的 Provider 抽屉当前仅自定义 provider 可配 baseUrl，内置仅密钥管理 | `services/ai`、决策记录「AI 模型配置」 |
 
 ## 日志审计
 

@@ -23,7 +23,7 @@ pnpm build      # web 生产构建（Nitro 产物）
 - 单仓库多包（pnpm workspace）：`web`（TanStack Start 应用，SSH 引擎与策略分类器内聚于 `services/`）/ `desktop`（Electron 主进程）
 - 依赖方向：`desktop → web`（Electron main 启动 web 构建产物或 dev server）；`#/*` 别名仅 web 包内生效
 - 架构铁律：renderer 永不直连 Electron ipcMain，通信一律走 SFn / Server Route；策略引擎只服务 AI / 自动操作路径（用户手动操作不设防，连接器本质），AI 命令无绕过路径
-- 修改实现前先读设计文档；文档与实现冲突时以决策记录（`docs/04-决策记录.md`）为准
+- 修改实现前先读设计文档；文档与实现冲突时以决策记录（`docs/决策记录.md`）为准
 
 ## 提交规范
 
@@ -68,5 +68,5 @@ docker compose -f dev/docker/docker-compose.yml down
 
 1. 从 `main` 切出特性分支，命名 `feat/<描述>` / `fix/<描述>`
 2. 完成实现与测试，跑通 `pnpm check`
-3. 涉及设计决策变更时同步更新 `docs/04-决策记录.md` 并回填受影响文档
+3. 涉及设计决策变更时同步更新 `docs/决策记录.md` 并回填受影响文档
 4. 开 PR 描述改动动机、影响范围与验证方式，`main` 分支通过 CI 后合入

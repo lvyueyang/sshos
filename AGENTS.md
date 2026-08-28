@@ -4,7 +4,7 @@
 
 SSH 可视化终端管理工具（代号 ssh-os）：以**纯 SSH 协议、零 agent** 把远程 Linux 的文件、进程、软件、Docker 以桌面隐喻可视化呈现，用户像操作本地电脑一样操作远程服务器，AI 作为"第二消费者"接入同一套读写网关。桌面外壳范式：一个 SSH 连接 = 一个 OS 桌面 Tab。
 
-**当前阶段**：P0-P3 已落地（脚手架 / SSH 引擎 / 策略分类器 / web 基座），W0 spike 完成（PTY / metrics 流实测首包 2-3ms，Pi SDK 0.84.2 API 定稿）；D20 发行版适配已落地（发行版 Profile + App 远程能力探测 + 缺失依赖安装引导，见「发行版适配」小节）。修改实现前先读设计文档；文档与实现冲突时以决策记录（`docs/04-决策记录.md`）为单一事实来源。
+**当前阶段**：P0-P3 已落地（脚手架 / SSH 引擎 / 策略分类器 / web 基座），W0 spike 完成（PTY / metrics 流实测首包 2-3ms，Pi SDK 0.84.2 API 定稿）；D20 发行版适配已落地（发行版 Profile + App 远程能力探测 + 缺失依赖安装引导，见「发行版适配」小节）。修改实现前先读设计文档；文档与实现冲突时以决策记录（`docs/决策记录.md`）为单一事实来源。
 
 ## 开发测试环境
 
@@ -49,7 +49,7 @@ ssh-os/
 │   │       │                     #   policy（classifier/rules/types）、bootstrap、transfer
 │   │       └── db/               # node:sqlite + drizzle（index/schema/migrate）
 │   └── desktop/                  # Electron 壳（main/bootstrap/updater）
-└── docs/                         # 01 项目概述 / 02 技术架构 / 03 界面设计 / 04 决策记录 / 05 界面框图 / 06 UI 重构方案 / 07 UI 范式与规则 / TODO 待办清单
+└── docs/                         # 01 项目概述 / 02 技术架构 / 03 界面设计 / 决策记录 / 05 界面框图 / UI 范式与规则 / 08 详细设计 / TODO 待办清单
 ```
 
 - 依赖方向：`desktop` → `web`（Electron main 启动 web 的构建产物或 dev server）；SSH 核心逻辑与策略分类器均内聚在 web 包 `services/` 内，不再有独立 core / policy 包
@@ -139,7 +139,7 @@ ssh-os/
 
 ## 发行版适配（D20）
 
-对不同 Linux 发行版 / 镜像做三层适配（详见 `docs/04-决策记录.md` D20 与 `docs/02-技术架构.md` §6.7）：
+对不同 Linux 发行版 / 镜像做三层适配（详见 `docs/决策记录.md` D20 与 `docs/02-技术架构.md` §6.7）：
 
 1. **发行版 Profile（services/capabilities `distro-profile.ts`）**：连接后按回退链（`/etc/os-release` → `/etc/redhat-release` → `/etc/debian_version` → `lsb_release` → `uname`）探测一次，产出 `{ id, family, packageManager, initSystem, coreutils }`，随会话缓存、断开清理；经 `getSessionProfileSFn` 暴露
 2. **App 远程能力探测**：`AppManifest.remoteRequirements` 声明远程工具依赖；`probeToolsSFn` 固定只读命令 `command -v` 批量探测（工具名白名单校验），按会话缓存 TTL 60s；UI 走 `useRemoteTools` + `AppCapabilities`（gate/hint/fallback）
@@ -201,7 +201,7 @@ ssh-os/
 - 修改时以现有代码为准
 - 任务完成后必须执行 `pnpm check`，确保类型检查与 Biome 检查通过（待命令生效）
 - 不提交临时文件、测试产物、密钥、`.env`；临时文件统一放入仓库根目录 `.tmp/`
-- 涉及设计决策变更时，同步更新 `docs/04-决策记录.md` 并回填受影响文档
+- 涉及设计决策变更时，同步更新 `docs/决策记录.md` 并回填受影响文档
 
 ## 提交建议
 
