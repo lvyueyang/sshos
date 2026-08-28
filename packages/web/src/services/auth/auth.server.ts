@@ -5,15 +5,13 @@
 
 import { randomBytes } from "node:crypto";
 import {
-	hashPassword,
 	isConfigured,
 	readServerConfig,
 	SERVER_DEFAULTS,
-	signJwt,
-	verifyJwt,
-	verifyPassword,
 	writeServerConfig,
-} from "./index";
+} from "./core/config";
+import { signJwt, verifyJwt } from "./core/jwt";
+import { hashPassword, verifyPassword } from "./core/password";
 
 /** 首次配置：写 passwordHash + serverSecret（保留半配置的 port/bind），返回 token */
 export function setupServer(password: string): string {

@@ -20,7 +20,11 @@ vi.mock("#/lib/logger/logger.server", () => ({
 /** 重置模块缓存后重新加载 bootstrap（重置模块级 started 状态） */
 async function loadBootstrap() {
 	vi.resetModules();
-	return import("../index");
+	const [{ runBootstrap }, { getBootstrapStatus }] = await Promise.all([
+		import("../bootstrap"),
+		import("../status"),
+	]);
+	return { runBootstrap, getBootstrapStatus };
 }
 
 afterEach(() => {

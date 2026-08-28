@@ -17,9 +17,12 @@ vi.mock("#/services/bootstrap/status", () => ({
 	getBootstrapStatus: mockGetBootstrapStatus,
 }));
 
-vi.mock("#/services/auth", () => ({
+vi.mock("#/services/auth/core/config", () => ({
 	readServerConfig: () => ({ serverSecret: "test-secret" }),
 	isConfigured: mockIsConfigured,
+}));
+
+vi.mock("#/services/auth/core/jwt", () => ({
 	verifyJwt: mockVerifyJwt,
 }));
 
