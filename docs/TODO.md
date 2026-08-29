@@ -39,3 +39,9 @@
 | 待做 | 编辑器 app（Monaco Editor） | 新 `apps/editor`：基于 Monaco Editor（VSCode 核心）编辑远程文件。window surface + `sftp` 能力：SFTP 读取打开 / 保存写回（写回为低风险新建，与 mkdir/上传同权 safe 放行）。Monaco 体积大，须动态 import 按需加载避免拖累主包（性能内建），语言服务随打开文件类型按需注册 | `apps/editor/`（新建）、`services/ssh/sftp/sftp.server.ts`、`app-framework/types.ts`、`vite.config.ts` |
 | 待做 | 文件管理器「用编辑器打开」 | 复用上下文菜单贡献点：files app 右键文件 → 「用编辑器打开」唤起 editor app 并打开该远程文件（`contributes.contextMenus` + `ctx.menus.registerHandler`） | `apps/files/app.ts`、`app-framework/types.ts` |
 | 待做 | 终端 vi 模式智能提示 | 终端进入 vi/vim/nano 时（command-tracker 已捕获输入行，可识别 `vi`/`vim` 命令前缀）智能提示改用编辑器 app；复用 `stores/ui.ts` 一次性预填机制（aiInstallSignal/consumeAiInstall）预填「用编辑器打开当前文件」，给出「继续终端编辑 / 打开编辑器」选择，避免打断用户 | `apps/terminal/command-tracker.ts`、`apps/terminal/TerminalWindow.tsx`、`apps/ai/AiPanel.tsx`、`stores/ui.ts` |
+
+## 远程服务访问（forwardOut）
+
+| 状态 | 待办 | 说明 | 参考 |
+| --- | --- | --- | --- |
+| 待做 | 合理利用 `forwardOut()` 访问服务器服务 | 基于 ssh2 `Client.forwardOut()`（direct-tcpip 通道）复用 SSH 连接访问服务器提供的服务（远程 Web 面板 / 监控指标端点 / 数据库管理页等），形态等价 `ssh -L` 本地转发。实现方向：① 在 `services/ssh/connection` 增加 forwardOut 通道管理（src 占位 + `dstHost/dstPort` → 双向流），随 session 生命周期登记 / 断开清理；② web 服务端（Node 持有 SSH 连接）把通道对接到本地 HTTP 转发代理或流式管道（Server Route 流式 / WebSocket 透传），请求经 `forwardOut` 转发到远端服务后将响应流回 renderer，遵守「渲染层不直连远端」边界；③ 前端落地面：新增 app（如远程浏览器 / 服务面板）或挂载到 monitor app 消费。安全边界：端口转发属于高影响面，目标须限定白名单（localhost / 内网段 + 端口校验），或按需纳入策略引擎 review 审批（与 execWithPolicy 同路径思路）；避免任意 host/port 转发成为 SSRF 类风险 | `services/ssh/connection/ssh-manager.ts`、`services/ssh/connection/ssh.server.ts`、`routes/api/*.tsx`（Server Route 流式）、`packages/web/src/apps/`（新增 app） |
