@@ -1,6 +1,8 @@
 /**
  * terminal 应用 SFn 包装（docs 技术架构 §5.4）：
- * connect / createPty / sendInput（不挂策略）/ resizePty / disconnect。
+ * connect / heartbeat / ptyWsTicket（WS 握手票据）/ disconnect。
+ * PTY 通道本身走 WebSocket 全双工（决策记录「PTY 通道 WebSocket」），
+ * SFn 仅负责建连、心跳、票据签发与断开。
  * 纯 SSH 逻辑在 services/ssh/connection/ssh.server.ts。
  */
 
@@ -9,19 +11,14 @@ import { authMiddleware } from "#/middleware/auth-guard";
 import {
 	connectSession,
 	disconnectSession,
-	ptyManager,
-	sshManager,
 	touchSession,
 } from "#/services/ssh/connection/ssh.server";
+import { createPtyTicket } from "#/services/ssh/pty/ticket";
 import {
-	closePtySchema,
 	connectSchema,
-	createPtySchema,
 	disconnectSchema,
 	heartbeatSchema,
-	ptyStreamSchema,
-	resizePtySchema,
-	sendInputSchema,
+	ptyWsTicketSchema,
 } from "./terminal.schemas";
 
 /** 建立 SSH 连接（解密凭据；服务端按 connectionId 幂等——已有存活会话直接返回既有 sessionId） */
@@ -45,58 +42,13 @@ export const heartbeatSFn = createServerFn({ method: "POST" })
 		alive: touchSession(data.sessionId),
 	}));
 
-/** 创建 PTY 会话，返回 ptyId */
-export const createPtySFn = createServerFn({ method: "POST" })
-	.validator(createPtySchema)
+/** 获取 PTY WebSocket 握手票据：一次性、绑定 sessionId、TTL 内有效（WS 网关按票据鉴权，见 server/routes/api/pty-ws） */
+export const ptyWsTicketSFn = createServerFn({ method: "POST" })
+	.validator(ptyWsTicketSchema)
 	.middleware([authMiddleware])
-	.handler(async ({ data }) => {
-		const session = sshManager.get(data.sessionId);
-		const pty = await ptyManager.create(session.client, {
-			sessionId: session.sessionId,
-			cols: data.cols,
-			rows: data.rows,
-		});
-		return { ptyId: pty.ptyId };
-	});
-
-/** 发送键盘输入（逐键流不挂策略，见 docs 技术架构 §5.3） */
-export const sendInputSFn = createServerFn({ method: "POST" })
-	.validator(sendInputSchema)
-	.middleware([authMiddleware])
-	.handler(async ({ data }) => {
-		ptyManager.get(data.ptyId).channel.write(data.data);
-		return { ok: true };
-	});
-
-/** 调整终端尺寸 */
-export const resizePtySFn = createServerFn({ method: "POST" })
-	.validator(resizePtySchema)
-	.middleware([authMiddleware])
-	.handler(async ({ data }) => {
-		ptyManager.resize(data.ptyId, data.cols, data.rows);
-		return { ok: true };
-	});
-
-/** 关闭 PTY 会话（终端窗口卸载时销毁，避免重开复用已断流的 pty） */
-export const closePtySFn = createServerFn({ method: "POST" })
-	.validator(closePtySchema)
-	.middleware([authMiddleware])
-	.handler(async ({ data }) => {
-		ptyManager.destroy(data.ptyId);
-		return { ok: true };
-	});
-
-/** PTY 输出流：返回文本 ReadableStream，客户端逐块解码（SFn 流式） */
-export const ptyStreamSFn = createServerFn({ method: "GET" })
-	.validator(ptyStreamSchema)
-	.middleware([authMiddleware])
-	.handler(async ({ data }) => {
-		const { Readable } = await import("node:stream");
-		// 单终端 spike：取该会话当前 pty；多终端时客户端传 ptyId 精确订阅
-		const pty = ptyManager.getBySession(data.sessionId);
-		if (!pty) throw new Error("PTY 会话不存在");
-		return Readable.toWeb(pty.output) as ReadableStream<Uint8Array>;
-	});
+	.handler(async ({ data }) => ({
+		ticket: createPtyTicket(data.sessionId),
+	}));
 
 /** 断开 SSH 连接 */
 export const disconnectSFn = createServerFn({ method: "POST" })

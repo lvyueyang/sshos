@@ -96,9 +96,20 @@ export class PtyManager {
 		if (!pty) throw new PtySessionError(ptyId);
 		return pty;
 	}
+}
 
-	/** 按所属会话取第一个 PTY（多终端场景用 ptyId 精确获取） */
-	getBySession(sessionId: string): PtySession | undefined {
-		return [...this.sessions.values()].find((p) => p.sessionId === sessionId);
-	}
+/**
+ * 全局 PTY 管理器单例（跨 dev 多环境 / HMR / 打包 chunk 共享）。
+ * 挂 globalThis（对齐 bootstrap/status.ts 的模式）：dev 下 SFn（ssr 环境）与
+ * WebSocket 网关（nitro 环境）各自加载本模块，若不共享实例则 PTY 会话状态分裂。
+ */
+const GLOBAL_KEY = "__SSHOS_PTY_MANAGER__";
+
+export function getPtyManager(): PtyManager {
+	const g = globalThis as Record<string, unknown>;
+	const existing = g[GLOBAL_KEY];
+	if (existing) return existing as PtyManager;
+	const manager = new PtyManager();
+	g[GLOBAL_KEY] = manager;
+	return manager;
 }

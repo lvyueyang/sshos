@@ -46,7 +46,10 @@ export default defineConfig({
 			},
 		}),
 		viteReact(),
-		// Nitro 负责生产打包，server.ts 被自动检测为服务端入口
-		nitro(),
+		// Nitro 负责生产打包，server.ts 被自动检测为服务端入口。
+		// features.websocket 开启 PTY WebSocket 网关（决策记录「PTY 通道 WebSocket」）：
+		// 生产 node preset 挂 upgrade 监听，dev 的 vite dev server 同样透传（vite.dev.mjs）。
+		// serverDir 声明服务端目录扫描（server/routes/** → 路由），否则 nitro 不扫描任何服务端路由
+		nitro({ serverDir: "server", features: { websocket: true } }),
 	],
 });

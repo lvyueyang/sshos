@@ -69,7 +69,7 @@ ssh-os/
 | 日期 / 电子表格 | dayjs / hucre | — |
 | 国际化 | i18next | 默认 zh-CN |
 | 参数校验 | Zod | 每个 SFn 用 `.validator(z)` |
-| SSH / 终端 | ssh2 / xterm.js + 官方 addon | 纯 Node SSH2；不用 addon-attach |
+| SSH / 终端 | ssh2 / xterm.js + 官方 addon | 纯 Node SSH2；PTY 通道经 `@xterm/addon-attach` 承载 WebSocket（决策记录「PTY 通道 WebSocket」） |
 | 数据库 | `node:sqlite` + `drizzle-orm/node-sqlite` | 零原生依赖 |
 | 日志 | Pino | 按天文件轮转 |
 | AI 引擎 | `@earendil-works/pi-coding-agent`（SDK 模式） | 严禁 `@pi.dev/sdk`（不存在） |
@@ -263,7 +263,7 @@ ssh-os/
 
 ### 项目安全约束
 
-- **策略引擎挂载边界**：只服务 AI / 自动操作路径（`execWithPolicy`：AI 工具命令、`execCommandSFn`、安装引导）；用户手动操作（终端输入、文件操作）不过策略；`sendInputSFn` 逐键流不挂策略（见 docs/02 §5.3）
+- **策略引擎挂载边界**：只服务 AI / 自动操作路径（`execWithPolicy`：AI 工具命令、`execCommandSFn`、安装引导）；用户手动操作（终端输入、文件操作）不过策略；终端逐键输入（WebSocket 上行原始字节，见 docs/02 §5.3）不挂策略
 - **审批无绕过路径**：review 级命令必须经 Approval Registry + `approvalSFn` 重放执行，不存在"直接执行"路径
 - **Prompt 注入隔离**：systemPrompt 代码硬编码，用户消息不得覆盖；`chatSchema` 排除 `system` 角色
 - **按需挂载鉴权（fsdx 范式，D26）**：不做全局 request 鉴权，也不设"豁免注册表"（无 public-sfns / http-guard）；`middleware/auth-guard.ts` 提供 `authMiddleware`（function middleware，读 `X-SSHOS-TOKEN` → `resolveAuthContext` 校验）与 `authRouteGuard()`（Server Route 版，捕获 `AuthError` 转 HTTP JSON）；**需要鉴权的 SFn 逐个挂 `.middleware([authMiddleware])`**（业务 SFn 全部已挂），公开 SFn（认证 setup/login/status 与 bootstrap 状态）**不挂即天然公开**；`resolveAuthContext` 未配置启动密码抛 401、bootstrap 未 ready 抛 503、token 缺失/无效抛 401；渲染层请求统一经 `serverFns.fetch`（SFn）携带 token（存 localStorage，`lib/auth-client.ts`），禁止绕过

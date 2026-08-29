@@ -194,3 +194,20 @@ export class SshManager {
 		return expired;
 	}
 }
+
+/**
+ * 全局 SSH 连接管理器单例（跨 dev 多环境 / HMR / 打包 chunk 共享）。
+ * 挂 globalThis（对齐 pty-manager / bootstrap-status 的模式）：dev 下 SFn（ssr 环境）
+ * 与 WebSocket 网关（nitro 环境）各自加载本模块，若不共享实例则会话状态分裂，
+ * 终端 / 命令 / 指标将看到互相看不到对方的连接。
+ */
+const GLOBAL_KEY = "__SSHOS_SSH_MANAGER__";
+
+export function getSshManager(): SshManager {
+	const g = globalThis as Record<string, unknown>;
+	const existing = g[GLOBAL_KEY];
+	if (existing) return existing as SshManager;
+	const manager = new SshManager();
+	g[GLOBAL_KEY] = manager;
+	return manager;
+}

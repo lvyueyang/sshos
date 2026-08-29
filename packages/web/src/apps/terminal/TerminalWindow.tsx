@@ -1,6 +1,7 @@
 /**
- * 终端窗口（docs 界面设计 §5）：基于 xterm.js，通过 ptyStreamSFn（SFn 流式）消费
- * PTY 输出，sendInputSFn 发送键盘输入。挂载时创建 PTY channel，卸载时关闭。
+ * 终端窗口（docs 界面设计 §5）：基于 xterm.js + `@xterm/addon-attach` 承载 WebSocket 全双工通道
+ * （决策记录「PTY 通道 WebSocket」：ptyWsTicketSFn 票据握手 → addon-attach 直连）。
+ * 终端尺寸经标准 resize 序列 `\x1b[<rows>;<cols>R` 下发（服务端解析并 setWindow）。
  * xterm 为 CJS 且纯 client，组件内动态 import，SSR 不加载（避免模块 interop 问题）。
  */
 
@@ -8,13 +9,7 @@ import type { ITheme, Terminal as TerminalType } from "@xterm/xterm";
 import { useEffect, useRef, useState } from "react";
 import { recordTerminalCommandSFn } from "#/services/audit/terminal/terminal.functions";
 import { createCommandTracker } from "./command-tracker";
-import {
-	closePtySFn,
-	createPtySFn,
-	ptyStreamSFn,
-	resizePtySFn,
-	sendInputSFn,
-} from "./terminal.functions";
+import { openTerminalSocket } from "./pty-ws-client";
 
 interface TerminalWindowProps {
 	sessionId: string;
@@ -82,20 +77,21 @@ function readTerminalFontSize(container: HTMLElement): number {
 export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const termRef = useRef<TerminalType | null>(null);
-	const ptyIdRef = useRef<string | null>(null);
 	const [connected, setConnected] = useState(false);
 
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
-		// 会话失效/恢复窗口期 sessionId 为空：不建 PTY，等 recovery 写入新 sessionId 后本 effect 重跑重建
+		// 会话失效/恢复窗口期 sessionId 为空：不建连，等 recovery 写入新 sessionId 后本 effect 重跑重建
 		if (!sessionId) return;
 
 		let disposed = false;
-		let abort: AbortController | null = null;
-		let ptyReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-		let fitAddon: { fit(): void } | null = null;
+		let socket: WebSocket | null = null;
+		let attach: { dispose(): void } | null = null;
+		let onWsMessage: ((ev: MessageEvent) => void) | null = null;
 		let inputDisposable: { dispose(): void } | null = null;
+		let resizeDisposable: { dispose(): void } | null = null;
+		let fitAddon: { fit(): void } | null = null;
 		let resizeObserver: ResizeObserver | null = null;
 
 		void (async () => {
@@ -136,100 +132,82 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 			fitAddon = fit;
 			setConnected(true);
 
-			// 键盘输入 → sendInputSFn。
-			// 快速打字时 onData 回调密集且 sendInput 是异步网络调用，
-			// 直接 fire-and-forget 会并发乱序，这里用队列串行发送保证 PTY 输入顺序
-			const inputQueue: string[] = [];
-			let inputFlushing = false;
-			// 命令追踪：回车时记录用户执行的命令（terminal_command 审计，异步落库不阻塞输入）
-			const tracker = createCommandTracker((command) => {
-				void recordTerminalCommandSFn({ data: { sessionId, command } }).catch(
-					() => {},
-				);
-			});
-			const flushInput = async () => {
-				if (inputFlushing) return;
-				inputFlushing = true;
-				try {
-					while (inputQueue.length > 0) {
-						const chunk = inputQueue.shift()!;
-						const ptyId = ptyIdRef.current;
-						if (!ptyId) return;
-						await sendInputSFn({ data: { ptyId, data: chunk } });
-					}
-				} finally {
-					inputFlushing = false;
-				}
-			};
-			inputDisposable = term.onData((data) => {
-				tracker.handleInput(data);
-				if (!ptyIdRef.current) return;
-				inputQueue.push(data);
-				void flushInput();
-			});
-
 			try {
-				const { ptyId } = await createPtySFn({
-					data: { sessionId, cols: term.cols, rows: term.rows },
-				});
+				// 先加载 addon chunk，再开 socket：消除 socket open 到 loadAddon 之间
+				// 的异步空窗（该窗口期到达的下行帧浏览器不缓冲、会丢首屏 shell banner）
+				const { AttachAddon } = await import("@xterm/addon-attach");
 				if (disposed) return;
-				ptyIdRef.current = ptyId;
 
-				// 订阅 PTY 输出流（SFn 流式，逐块解码写入终端）
-				abort = new AbortController();
-				const stream = await ptyStreamSFn({
-					data: { sessionId },
-					signal: abort.signal,
-				});
-				// await 期间组件已卸载：请求已发出无法中止，取消返回的流避免服务端残留 pty 推送
+				// 票据握手 → 已打开的 WebSocket（协议由 @xterm/addon-attach 承载）
+				const ws = await openTerminalSocket(sessionId);
 				if (disposed) {
-					void stream?.cancel().catch(() => {});
+					ws.close();
 					return;
 				}
-				if (!stream) return;
-				ptyReader = stream.getReader();
-				const decoder = new TextDecoder();
-				for (;;) {
-					const { done, value } = await ptyReader.read();
-					if (done) break;
+				socket = ws;
+
+				// 命令追踪：回车时记录用户执行的命令（terminal_command 审计，异步落库不阻塞输入）。
+				// 输入喂 tracker；输出由本组件的 message 监听喂 tracker（与 addon 的消息监听并存）
+				const tracker = createCommandTracker((command) => {
+					void recordTerminalCommandSFn({ data: { sessionId, command } }).catch(
+						() => {},
+					);
+				});
+				inputDisposable = term.onData((data) => tracker.handleInput(data));
+				onWsMessage = (ev) => {
 					if (disposed) return;
-					const text = decoder.decode(value, { stream: true });
-					// 输出流同时喂给命令追踪器（检测密码提示，抑制密码行落审计）
+					// addon-attach 设置 binaryType=arraybuffer，服务端下行文本帧时为 string
+					const text =
+						typeof ev.data === "string"
+							? ev.data
+							: new TextDecoder().decode(new Uint8Array(ev.data));
 					tracker.consumeOutput(text);
-					term.write(text);
-				}
+				};
+				ws.addEventListener("message", onWsMessage);
+
+				// 承载通道：addon-attach（socket 已 OPEN，loadAddon 不会因状态抛错）
+				const attachAddon = new AttachAddon(ws);
+				term.loadAddon(attachAddon);
+				attach = attachAddon;
+
+				// 终端尺寸经标准 resize 序列下发（服务端解析并 setWindow）
+				const sendResize = () => {
+					if (socket?.readyState === WebSocket.OPEN) {
+						socket.send(`\x1b[${term.rows};${term.cols}R`);
+					}
+				};
+				resizeDisposable = term.onResize(sendResize);
+				sendResize();
 			} catch (err) {
-				if ((err as Error).name !== "AbortError") {
-					term.write(`\r\n[连接失败] ${(err as Error).message}\r\n`);
-				}
+				if (disposed) return;
+				// 失败时回收已打开的 socket（addon 加载 / 握手异常等路径），避免挂起
+				socket?.close();
+				socket = null;
+				term.write(
+					`\r\n[连接失败] ${err instanceof Error ? err.message : String(err)}\r\n`,
+				);
+				setConnected(false);
 			}
 		})();
 
-		// 尺寸自适应：fit + resize 上报
+		// 尺寸自适应：fit + resize 上报（经 resize 序列）
 		resizeObserver = new ResizeObserver(() => {
 			fitAddon?.fit();
-			const ptyId = ptyIdRef.current;
-			const term = termRef.current;
-			if (ptyId && term) {
-				void resizePtySFn({
-					data: { ptyId, cols: term.cols, rows: term.rows },
-				});
-			}
 		});
 		resizeObserver.observe(container);
 
 		return () => {
 			disposed = true;
-			abort?.abort();
-			void ptyReader?.cancel().catch(() => {});
 			inputDisposable?.dispose();
+			resizeDisposable?.dispose();
+			if (socket && onWsMessage)
+				socket.removeEventListener("message", onWsMessage);
+			attach?.dispose();
+			socket?.close();
 			resizeObserver?.disconnect();
 			termRef.current?.dispose();
 			termRef.current = null;
 			fitAddon = null;
-			// 关闭终端时销毁 PTY（否则服务端 getBySession 返回已断流的旧 pty，重开黑屏）
-			const ptyId = ptyIdRef.current;
-			if (ptyId) void closePtySFn({ data: { ptyId } });
 		};
 	}, [sessionId]);
 

@@ -11,15 +11,16 @@ import { approvalRegistry } from "#/services/ai/approval/registry";
 import { clearDistroProfile } from "#/services/capabilities/distro/distro-profile";
 import { clearToolCache } from "#/services/capabilities/tools/cache";
 import { getConnection } from "../../settings/connections/settings.server";
-import { PtyManager } from "../pty/pty-manager";
+import { getPtyManager } from "../pty/pty-manager";
+import { clearPtyTicketsBySession } from "../pty/ticket";
 import {
 	type ConnectionOptions,
-	SshManager,
+	getSshManager,
 	type SshSession,
 } from "./ssh-manager";
 
-export const sshManager = new SshManager();
-export const ptyManager = new PtyManager();
+export const sshManager = getSshManager();
+export const ptyManager = getPtyManager();
 
 /** 展开 ~ 为家目录 */
 function expandHome(p: string): string {
@@ -171,12 +172,13 @@ export function touchSession(sessionId: string): boolean {
 	return sshManager.touch(sessionId);
 }
 
-/** 断开连接并清理（同步清空该会话的审批挂起项，docs 技术架构 §7.3；同时清理发行版 Profile / 工具探测缓存） */
+/** 断开连接并清理（同步清空该会话的审批挂起项，docs 技术架构 §7.3；同时清理发行版 Profile / 工具探测缓存 / WS 握手票据） */
 export function disconnectSession(sessionId: string): void {
 	sshManager.disconnect(sessionId);
 	approvalRegistry.clearBySession(sessionId);
 	clearDistroProfile(sessionId);
 	clearToolCache(sessionId);
+	clearPtyTicketsBySession(sessionId);
 }
 
 // 会话空闲 TTL 与清扫间隔（决策记录「会话接管与空闲回收」：刷新靠接管、关页靠 TTL）

@@ -11,33 +11,8 @@ export const connectSchema = z.object({
 
 export type ConnectInput = z.infer<typeof connectSchema>;
 
-/** 创建 PTY 会话（每个终端窗口一个 channel） */
-export const createPtySchema = z.object({
-	sessionId: z.string().min(1),
-	cols: z.number().int().min(1).default(80),
-	rows: z.number().int().min(1).default(24),
-});
-
-/** 发送键盘输入（逐键流，不挂策略——docs 技术架构 §5.3） */
-export const sendInputSchema = z.object({
-	ptyId: z.string().min(1),
-	data: z.string(),
-});
-
-/** 调整终端尺寸 */
-export const resizePtySchema = z.object({
-	ptyId: z.string().min(1),
-	cols: z.number().int().min(1),
-	rows: z.number().int().min(1),
-});
-
-/** 关闭 PTY 会话 */
-export const closePtySchema = z.object({
-	ptyId: z.string().min(1),
-});
-
-/** 订阅 PTY 输出流（SFn 流式返回 ReadableStream） */
-export const ptyStreamSchema = z.object({
+/** 获取 PTY WebSocket 握手票据（一次性、绑定 sessionId，WS 网关按票据鉴权） */
+export const ptyWsTicketSchema = z.object({
 	sessionId: z.string().min(1),
 });
 
