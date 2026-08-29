@@ -80,6 +80,25 @@ suites("SshManager 连接", () => {
 	});
 });
 
+suites("SshManager 幂等接管与空闲回收", () => {
+	it("connectionId 索引：命中存活会话，断开后失效", async () => {
+		const s = await ssh.connect(buildOptions());
+		expect(ssh.findByConnectionId(1)?.sessionId).toBe(s.sessionId);
+		ssh.disconnect(s.sessionId);
+		expect(ssh.findByConnectionId(1)).toBeUndefined();
+	});
+
+	it("touch 续租 & sweepExpired 空闲超 TTL 回收", async () => {
+		const s = await ssh.connect(buildOptions());
+		expect(ssh.touch(s.sessionId)).toBe(true);
+		expect(ssh.touch("not-exist")).toBe(false);
+		// 时间回拨到 lastHeartbeatAt 之后，以 idleMs=0 清扫必然超时
+		ssh.sweepExpired(0, s.lastHeartbeatAt + 1);
+		expect(ssh.has(s.sessionId)).toBe(false);
+		expect(ssh.findByConnectionId(1)).toBeUndefined();
+	});
+});
+
 suites("PtyManager 终端", () => {
 	it("创建 PTY、写入命令并收到回显", async () => {
 		const session = await ssh.connect(buildOptions());

@@ -79,7 +79,8 @@ function defaultWindowSize(app: AppDefinition) {
 
 export function Desktop({ tab }: DesktopProps) {
 	const windows = useDesktopStore(
-		(s) => s.windowsByTab[tab.connectionId] ?? {},
+		(s) =>
+			s.tabs.find((t) => t.connectionId === tab.connectionId)?.windows ?? {},
 	);
 	const openWindow = useDesktopStore((s) => s.openWindow);
 

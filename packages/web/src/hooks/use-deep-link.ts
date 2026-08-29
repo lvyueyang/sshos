@@ -65,7 +65,7 @@ export function useDeepLink(): void {
 					c.host === host && (c.port ?? 22) === port && c.username === username,
 			);
 			if (match) {
-				await connectConnection(match.id, match.title);
+				await connectConnection(match);
 				return;
 			}
 			// 未命中 → 预填新建连接抽屉（host/port/username）

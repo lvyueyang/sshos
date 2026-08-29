@@ -5,6 +5,7 @@
  * 纯客户端架构：settings / audit / log 由渲染层注入（走 SFn），不直连服务端模块。
  */
 
+import { useDesktopStore } from "#/stores/windows";
 import {
 	dispatchCreate,
 	dispatchRestore,
@@ -114,9 +115,35 @@ export class AppManager {
 		}
 	}
 
+	/** 读本连接 tab.uiState[appId] 内指定字段（未写过返回 undefined） */
+	private readUiState(appId: string, key: string): unknown {
+		const appState = this.getAppUiState(appId);
+		if (typeof appState !== "object" || appState === null) return undefined;
+		return (appState as Record<string, unknown>)[key];
+	}
+
+	/** 写本连接 tab.uiState[appId] 内指定字段（key 级合并，随 store 持久化） */
+	private writeUiState(appId: string, key: string, value: unknown): void {
+		const appState = this.getAppUiState(appId);
+		useDesktopStore.getState().setTabUiState(this.connectionId, appId, {
+			...(typeof appState === "object" && appState !== null
+				? (appState as Record<string, unknown>)
+				: {}),
+			[key]: value,
+		});
+	}
+
+	/** 取本连接 tab.uiState[appId] 当前值 */
+	private getAppUiState(appId: string): unknown {
+		return useDesktopStore
+			.getState()
+			.tabs.find((t) => t.connectionId === this.connectionId)?.uiState[appId];
+	}
+
 	/** 构建 App Context：按 manifest 能力裁剪暴露面 */
 	private createContext(def: AppDefinition): AppContext {
 		const { capabilities } = def.manifest;
+		const appId = def.manifest.id;
 		const session = {
 			connectionId: this.connectionId,
 			sessionId: this.sessionId,
@@ -146,6 +173,12 @@ export class AppManager {
 					this.deps.settings.get(key) as Promise<T | undefined>,
 				set: (key: string, value: unknown) =>
 					this.deps.settings.set(key, value),
+			},
+			// tab store 通道：app 展示/操作上下文态（随 tab 持久化，无需回写 DB）
+			uiState: {
+				get: <T>(key: string) => this.readUiState(appId, key) as T | undefined,
+				set: (key: string, value: unknown) =>
+					this.writeUiState(appId, key, value),
 			},
 			// UI 能力（openWindow / 面板写入 / 状态栏写入）后续迭代注入
 			ui: {},

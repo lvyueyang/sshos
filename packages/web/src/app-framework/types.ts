@@ -106,6 +106,14 @@ export interface AppLifecycle {
 	onShutdown?(reason: ShutdownReason): void;
 }
 
+/** tab store 展示/操作上下文态网关（跟随 tab 持久化回显；app 内部业务状态请走 settings / connection_setting） */
+export interface UiStateApi {
+	/** 读本连接该 app 的 uiState 指定字段（未写过返回 undefined） */
+	get<T = unknown>(key: string): T | undefined;
+	/** 写本连接该 app 的 uiState 指定字段（随 tab store 持久化，无需回写 DB） */
+	set<T = unknown>(key: string, value: T): void;
+}
+
 /** App 运行时上下文：只能访问 manifest 声明的能力 */
 export interface AppContext {
 	session: { connectionId: number; sessionId: string };
@@ -117,8 +125,10 @@ export interface AppContext {
 	audit: {
 		record(entry: AuditRecord): void;
 	};
-	/** 每连接键值存储（connection_setting） */
+	/** DB 通道：每连接键值存储（connection_setting，app 内部业务状态自取自维） */
 	settings: Record<string, unknown>;
+	/** tab store 通道：app 展示/操作上下文态（如 files 上次路径），随 tab 持久化 */
+	uiState: UiStateApi;
 	/** 窗口 / 面板 / 状态栏写入与实例管理 */
 	ui: Record<string, unknown>;
 	/** 右键菜单贡献点：registerHandler(id, handler) */

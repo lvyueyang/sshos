@@ -13,7 +13,8 @@ import { cn } from "#/utils";
 
 export function Taskbar({ tab }: { tab: TabState }) {
 	const windows = useDesktopStore(
-		(s) => s.windowsByTab[tab.connectionId] ?? {},
+		(s) =>
+			s.tabs.find((t) => t.connectionId === tab.connectionId)?.windows ?? {},
 	);
 	const focusWindow = useDesktopStore((s) => s.focusWindow);
 	const statusbarApps = useMemo(() => listStatusbarApps(), []);

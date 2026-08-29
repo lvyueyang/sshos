@@ -10,6 +10,10 @@
 import { auditLogWriter } from "#/services/audit/audit-writer.server";
 import { readServerConfig } from "#/services/auth/core/config";
 import { runBootstrap } from "#/services/bootstrap/bootstrap";
+import {
+	startSessionSweeper,
+	stopSessionSweeper,
+} from "#/services/ssh/connection/ssh.server";
 
 // 监听地址必须显式设置：Nitro preset 未设 NITRO_HOST 时默认绑定所有接口（0.0.0.0）。
 // server.json 的 port/bind 优先（手工编辑后重启生效）；未配置或未指定时收紧到仅本机。
@@ -24,9 +28,13 @@ applyServerConfig();
 // 非阻塞触发初始化（仅启动时执行一次）：服务即刻可响应 status 查询，前端显示载入界面
 runBootstrap();
 
-// 优雅关闭：进程退出信号到达时先刷空审计缓冲再退出（docs 技术架构 §7.8）
+// 会话空闲 TTL 清扫：孤儿会话（关页/崩溃/强杀，beforeunload 不触发）由服务端定时回收
+startSessionSweeper();
+
+// 优雅关闭：进程退出信号到达时先停掉清扫定时器、刷空审计缓冲再退出（docs 技术架构 §7.8）
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
 	process.on(signal, () => {
+		stopSessionSweeper();
 		void auditLogWriter.flushOnExit().finally(() => process.exit(0));
 	});
 }

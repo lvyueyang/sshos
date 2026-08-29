@@ -260,9 +260,7 @@ export function Sidebar() {
 											(connection) => connection.groupId === group.id,
 										)}
 										tabs={tabs}
-										onOpen={(connection) =>
-											void connectConnection(connection.id, connection.title)
-										}
+										onOpen={(connection) => void connectConnection(connection)}
 										onEditConnection={(connection) =>
 											setDrawer({ mode: "edit", connectionId: connection.id })
 										}
@@ -285,9 +283,7 @@ export function Sidebar() {
 										(connection) => connection.groupId == null,
 									)}
 									tabs={tabs}
-									onOpen={(connection) =>
-										void connectConnection(connection.id, connection.title)
-									}
+									onOpen={(connection) => void connectConnection(connection)}
 									onEditConnection={(connection) =>
 										setDrawer({ mode: "edit", connectionId: connection.id })
 									}

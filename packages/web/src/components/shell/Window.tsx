@@ -45,14 +45,16 @@ export function Window({
 	onClose,
 }: WindowProps) {
 	const { t } = useTranslation();
-	const win = useDesktopStore((s) => s.windowsByTab[tabId]?.[windowId]);
+	const win = useDesktopStore(
+		(s) => s.tabs.find((t) => t.connectionId === tabId)?.windows[windowId],
+	);
 	// 聚焦态：zIndex 为当前 Tab 内最高即聚焦（驱动标题栏高亮与阴影层级）
 	const focused = useDesktopStore(
 		(s) =>
 			win != null &&
-			Object.values(s.windowsByTab[tabId] ?? {}).every(
-				(w) => w.zIndex <= win.zIndex,
-			),
+			Object.values(
+				s.tabs.find((t) => t.connectionId === tabId)?.windows ?? {},
+			).every((w) => w.zIndex <= win.zIndex),
 	);
 	const openWindow = useDesktopStore((s) => s.openWindow);
 	const focusWindow = useDesktopStore((s) => s.focusWindow);

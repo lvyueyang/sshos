@@ -88,6 +88,8 @@ export function TerminalWindow({ sessionId }: TerminalWindowProps) {
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
+		// 会话失效/恢复窗口期 sessionId 为空：不建 PTY，等 recovery 写入新 sessionId 后本 effect 重跑重建
+		if (!sessionId) return;
 
 		let disposed = false;
 		let abort: AbortController | null = null;

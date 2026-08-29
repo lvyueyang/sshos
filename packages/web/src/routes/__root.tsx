@@ -18,6 +18,8 @@ import { SettingsWindow } from "#/components/SettingsWindow";
 import { Sidebar } from "#/components/shell/Sidebar";
 import { TabBar } from "#/components/shell/TabBar";
 import { Toaster } from "#/components/ui/sonner";
+import { useSessionHeartbeat } from "#/hooks/use-session-heartbeat";
+import { useSessionRecovery } from "#/hooks/use-session-recovery";
 import { useThemeStore } from "#/stores/theme";
 import "#/i18n";
 import "../globals.css";
@@ -49,6 +51,10 @@ function RootComponent() {
 
 /** 应用外壳：左侧连接侧栏 + 右侧 Tab 栏与桌面内容区（docs 界面设计 §2.1） */
 function AppShell() {
+	// 会话心跳续租：页面存活时周期刷新服务端会话 lastHeartbeatAt（关页/崩溃后由 TTL 清扫）
+	useSessionHeartbeat();
+	// 会话失效恢复：offline tab 自动兜底重连（刷新/服务端重启后换新 sessionId 续接）
+	useSessionRecovery();
 	return (
 		<div className="flex h-full overflow-hidden">
 			<Sidebar />

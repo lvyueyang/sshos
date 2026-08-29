@@ -41,6 +41,11 @@ export const ptyStreamSchema = z.object({
 	sessionId: z.string().min(1),
 });
 
+/** 心跳续租（决策记录「会话接管与空闲回收」：页面存活时周期调用，防空闲 TTL 误杀） */
+export const heartbeatSchema = z.object({
+	sessionId: z.string().min(1),
+});
+
 /** 断开 SSH 连接 */
 export const disconnectSchema = z.object({
 	sessionId: z.string().min(1),

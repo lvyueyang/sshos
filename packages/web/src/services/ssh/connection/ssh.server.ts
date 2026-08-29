@@ -141,13 +141,34 @@ export async function testConnection(
 	}
 }
 
-/** 建立连接：查询连接配置 → 组装 ConnectionOptions → ssh2 连接并登记会话 */
+/** 建立连接：查询连接配置 → 组装 ConnectionOptions → ssh2 连接并登记会话。
+ *  幂等接管（决策记录「会话接管与空闲回收」）：该 connectionId 已有存活会话时直接复用，不新建。 */
+const connectInFlight = new Map<number, Promise<SshSession>>();
+
 export async function connectSession(
 	connectionId: number,
 ): Promise<SshSession> {
-	const conn = await getConnection(connectionId);
-	const session = await sshManager.connect(toConnectionOptions(conn));
-	return session;
+	// 该 connectionId 已有存活会话时直接复用
+	const existing = sshManager.findByConnectionId(connectionId);
+	if (existing) return existing;
+	// 单飞：同一 connectionId 并发建连共享同一 Promise，避免 check-then-act 竞态建出双会话
+	const pending = connectInFlight.get(connectionId);
+	if (pending) return pending;
+	const promise = (async () => {
+		const conn = await getConnection(connectionId);
+		return sshManager.connect(toConnectionOptions(conn));
+	})();
+	connectInFlight.set(connectionId, promise);
+	try {
+		return await promise;
+	} finally {
+		connectInFlight.delete(connectionId);
+	}
+}
+
+/** 心跳续租：会话存在则刷新 lastHeartbeatAt；返回会话是否存活（客户端据 alive 决定降级重连） */
+export function touchSession(sessionId: string): boolean {
+	return sshManager.touch(sessionId);
 }
 
 /** 断开连接并清理（同步清空该会话的审批挂起项，docs 技术架构 §7.3；同时清理发行版 Profile / 工具探测缓存） */
@@ -156,6 +177,36 @@ export function disconnectSession(sessionId: string): void {
 	approvalRegistry.clearBySession(sessionId);
 	clearDistroProfile(sessionId);
 	clearToolCache(sessionId);
+}
+
+// 会话空闲 TTL 与清扫间隔（决策记录「会话接管与空闲回收」：刷新靠接管、关页靠 TTL）
+const SESSION_IDLE_TTL_MS = 5 * 60 * 1000;
+const SWEEP_INTERVAL_MS = 60 * 1000;
+
+// 定时器句柄放 globalThis：开发期 HMR 重载模块时不会叠加第二个 interval
+const SWEEPER_KEY = "__sshOsSessionSweeperTimer";
+const globalState = globalThis as {
+	[SWEEPER_KEY]?: ReturnType<typeof setInterval>;
+};
+
+/** 启动会话空闲 TTL 清扫（幂等；孤儿会话由服务端定时回收，不依赖浏览器卸载事件） */
+export function startSessionSweeper(): void {
+	if (globalState[SWEEPER_KEY]) return;
+	const timer = setInterval(() => {
+		for (const session of sshManager.sweepExpired(SESSION_IDLE_TTL_MS)) {
+			// 复用 disconnectSession 统一走审批挂起 / Profile / 工具缓存清理
+			disconnectSession(session.sessionId);
+		}
+	}, SWEEP_INTERVAL_MS);
+	timer.unref?.();
+	globalState[SWEEPER_KEY] = timer;
+}
+
+/** 停止清扫（优雅退出 / 测试清理用） */
+export function stopSessionSweeper(): void {
+	const timer = globalState[SWEEPER_KEY];
+	if (timer) clearInterval(timer);
+	globalState[SWEEPER_KEY] = undefined;
 }
 
 /** 按会话查询是否生产环境（策略引擎用，服务端权威来源） */

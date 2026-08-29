@@ -11,18 +11,20 @@ import {
 	disconnectSession,
 	ptyManager,
 	sshManager,
+	touchSession,
 } from "#/services/ssh/connection/ssh.server";
 import {
 	closePtySchema,
 	connectSchema,
 	createPtySchema,
 	disconnectSchema,
+	heartbeatSchema,
 	ptyStreamSchema,
 	resizePtySchema,
 	sendInputSchema,
 } from "./terminal.schemas";
 
-/** 建立 SSH 连接（解密凭据），返回 sessionId 与会话摘要 */
+/** 建立 SSH 连接（解密凭据；服务端按 connectionId 幂等——已有存活会话直接返回既有 sessionId） */
 export const connectSFn = createServerFn({ method: "POST" })
 	.validator(connectSchema)
 	.middleware([authMiddleware])
@@ -34,6 +36,14 @@ export const connectSFn = createServerFn({ method: "POST" })
 			username: session.username,
 		};
 	});
+
+/** 心跳续租：刷新会话 lastHeartbeatAt；alive=false 说明会话已失效，客户端降级重连 */
+export const heartbeatSFn = createServerFn({ method: "POST" })
+	.validator(heartbeatSchema)
+	.middleware([authMiddleware])
+	.handler(async ({ data }) => ({
+		alive: touchSession(data.sessionId),
+	}));
 
 /** 创建 PTY 会话，返回 ptyId */
 export const createPtySFn = createServerFn({ method: "POST" })

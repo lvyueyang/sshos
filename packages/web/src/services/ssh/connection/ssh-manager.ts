@@ -43,6 +43,8 @@ export interface SshSession {
 	port: number;
 	username: string;
 	createdAt: number;
+	/** 最近一次心跳时间（客户端续租，空闲 TTL 清扫依据，决策记录「会话接管与空闲回收」） */
+	lastHeartbeatAt: number;
 	isProduction: boolean;
 	aiEnabled: boolean;
 }
@@ -92,6 +94,8 @@ function toConnectConfig(opts: ConnectionOptions): ConnectConfig {
 
 export class SshManager {
 	private sessions = new Map<string, SshSession>();
+	/** connectionId → 存活会话的 sessionId（幂等接管索引，一连接一 Tab 至多一个） */
+	private byConnectionId = new Map<number, string>();
 
 	/** 建立 SSH 连接并登记会话；认证失败抛 ssh2 原始错误 */
 	async connect(opts: ConnectionOptions): Promise<SshSession> {
@@ -118,25 +122,33 @@ export class SshManager {
 			port: opts.port,
 			username: opts.username,
 			createdAt: Date.now(),
+			lastHeartbeatAt: Date.now(),
 			isProduction: opts.isProduction ?? false,
 			aiEnabled: opts.aiEnabled ?? true,
 		};
 		this.sessions.set(session.sessionId, session);
+		this.byConnectionId.set(opts.connectionId, session.sessionId);
 
 		// 连接建立后保持持久监听：error 兜底避免无监听崩溃（ssh2 无 error 监听时会 throw），
 		// close 事件触发时自动清理会话，避免断连后残留死会话
 		client.on("error", () => {});
 		client.on("close", () => {
 			this.sessions.delete(session.sessionId);
+			if (this.byConnectionId.get(session.connectionId) === session.sessionId) {
+				this.byConnectionId.delete(session.connectionId);
+			}
 		});
 		return session;
 	}
 
-	/** 断开连接并从会话表移除 */
+	/** 断开连接并从会话表移除（同步清理 connectionId 索引） */
 	disconnect(sessionId: string): void {
 		const session = this.sessions.get(sessionId);
 		if (!session) return;
 		this.sessions.delete(sessionId);
+		if (this.byConnectionId.get(session.connectionId) === sessionId) {
+			this.byConnectionId.delete(session.connectionId);
+		}
 		session.client.end();
 	}
 
@@ -155,5 +167,30 @@ export class SshManager {
 	/** 会话是否已建立 */
 	has(sessionId: string): boolean {
 		return this.sessions.has(sessionId);
+	}
+
+	/** 按 connectionId 查存活会话（幂等接管：一连接一 Tab，至多一个；不存在返回 undefined） */
+	findByConnectionId(connectionId: number): SshSession | undefined {
+		const sessionId = this.byConnectionId.get(connectionId);
+		if (!sessionId) return undefined;
+		return this.sessions.get(sessionId);
+	}
+
+	/** 心跳续租：刷新 lastHeartbeatAt；会话不存在返回 false */
+	touch(sessionId: string, now: number = Date.now()): boolean {
+		const session = this.sessions.get(sessionId);
+		if (!session) return false;
+		session.lastHeartbeatAt = now;
+		return true;
+	}
+
+	/** 找出并断开空闲超 TTL 的会话（网络层清理），返回被清理的会话列表 */
+	sweepExpired(idleMs: number, now: number = Date.now()): SshSession[] {
+		const expired: SshSession[] = [];
+		for (const session of this.sessions.values()) {
+			if (now - session.lastHeartbeatAt > idleMs) expired.push(session);
+		}
+		for (const session of expired) this.disconnect(session.sessionId);
+		return expired;
 	}
 }
